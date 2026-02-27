@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Optional, Tuple
 
+import threading
+
 import mss
 import mss.tools
 import numpy as np
@@ -17,15 +19,30 @@ logger = logging.getLogger(__name__)
 
 
 class ScreenCapture:
-    """High-performance screen capture using mss."""
+    """High-performance screen capture using mss.
+
+    Thread-safe: each thread automatically gets its own ``mss`` instance
+    via ``threading.local()``, avoiding the *_thread._local* attribute
+    errors that occur when a single ``mss`` handle is shared across
+    threads.
+    """
 
     def __init__(self, monitor_index: int = 0):
         """
         Args:
             monitor_index: 0 = all monitors combined, 1 = primary, 2 = second, etc.
         """
-        self._sct = mss.mss()
+        self._local = threading.local()
         self.monitor_index = monitor_index
+
+    @property
+    def _sct(self) -> mss.mss:
+        """Return a per-thread ``mss`` instance, creating one if needed."""
+        sct = getattr(self._local, "sct", None)
+        if sct is None:
+            sct = mss.mss()
+            self._local.sct = sct
+        return sct
 
     # ------------------------------------------------------------------
     # Public helpers
@@ -106,7 +123,10 @@ class ScreenCapture:
     # ------------------------------------------------------------------
 
     def close(self) -> None:
-        self._sct.close()
+        sct = getattr(self._local, "sct", None)
+        if sct is not None:
+            sct.close()
+            self._local.sct = None
 
     def __enter__(self):
         return self

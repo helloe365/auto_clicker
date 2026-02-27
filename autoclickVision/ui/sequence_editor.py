@@ -9,7 +9,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QParallelAnimationGroup,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    pyqtSignal,
+)
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -155,6 +162,72 @@ class StepCard(QWidget):
 
 
 # ──────────────────────────────────────────────────────────────────
+# Sliding Stacked Widget
+# ──────────────────────────────────────────────────────────────────
+
+class SlidingStackedWidget(QStackedWidget):
+    """QStackedWidget with smooth horizontal slide transitions."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._speed = 300
+        self._easing = QEasingCurve.Type.OutCubic
+        self._animating = False
+        self._next_index = 0
+        self._prev_index = 0
+
+    def slide_to(self, index: int):
+        """Animate a horizontal slide to the page at *index*."""
+        if index == self.currentIndex() or self._animating:
+            return
+        if index < 0 or index >= self.count():
+            return
+
+        self._animating = True
+        cur_idx = self.currentIndex()
+        cur_widget = self.widget(cur_idx)
+        nxt_widget = self.widget(index)
+
+        width = self.frameRect().width()
+        direction = 1 if index > cur_idx else -1
+
+        # Position next widget off-screen
+        nxt_widget.setGeometry(self.frameRect())
+        nxt_widget.move(direction * width, 0)
+        nxt_widget.show()
+        nxt_widget.raise_()
+
+        # Slide current widget out
+        anim_cur = QPropertyAnimation(cur_widget, b"pos", self)
+        anim_cur.setDuration(self._speed)
+        anim_cur.setStartValue(cur_widget.pos())
+        anim_cur.setEndValue(QPoint(-direction * width, 0))
+        anim_cur.setEasingCurve(self._easing)
+
+        # Slide next widget in
+        anim_nxt = QPropertyAnimation(nxt_widget, b"pos", self)
+        anim_nxt.setDuration(self._speed)
+        anim_nxt.setStartValue(QPoint(direction * width, 0))
+        anim_nxt.setEndValue(QPoint(0, 0))
+        anim_nxt.setEasingCurve(self._easing)
+
+        group = QParallelAnimationGroup(self)
+        group.addAnimation(anim_cur)
+        group.addAnimation(anim_nxt)
+
+        self._next_index = index
+        self._prev_index = cur_idx
+        group.finished.connect(self._on_slide_done)
+        group.start(QParallelAnimationGroup.DeletionPolicy.DeleteWhenStopped)
+
+    def _on_slide_done(self):
+        self.setCurrentIndex(self._next_index)
+        # Reset old widget position for correct relayout
+        self.widget(self._prev_index).move(QPoint(0, 0))
+        self._animating = False
+
+
+# ──────────────────────────────────────────────────────────────────
 # Sequence Editor
 # ──────────────────────────────────────────────────────────────────
 
@@ -185,8 +258,8 @@ class SequenceEditor(QWidget):
         mode_row.addWidget(self._btn_text)
         root.addLayout(mode_row)
 
-        # Stacked pages
-        self._stack = QStackedWidget()
+        # Stacked pages (with slide animation)
+        self._stack = SlidingStackedWidget()
 
         # -- Page 0: Visual mode ------
         visual_page = QWidget()
@@ -254,7 +327,7 @@ class SequenceEditor(QWidget):
     # ═════════════════════════════════════════════════════════════
 
     def _switch_mode(self, idx: int):
-        self._stack.setCurrentIndex(idx)
+        self._stack.slide_to(idx)
         self._btn_visual.setChecked(idx == 0)
         self._btn_text.setChecked(idx == 1)
         if idx == 1:

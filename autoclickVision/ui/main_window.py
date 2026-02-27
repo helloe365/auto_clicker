@@ -237,11 +237,25 @@ class MainWindow(QMainWindow):
         menu.addAction("Quit").triggered.connect(QApplication.quit)
         self._tray.setContextMenu(menu)
         self._tray.activated.connect(self._on_tray_activated)
-        # Icon will be set only if an icon file exists
-        icon_path = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
-        if icon_path.exists():
-            self._tray.setIcon(QIcon(str(icon_path)))
+        # Load icon via QPixmap (more reliable than QIcon(path) for .ico)
+        icon = self._load_app_icon()
+        if not icon.isNull():
+            self._tray.setIcon(icon)
+            self.setWindowIcon(icon)
         self._tray.show()
+
+    @staticmethod
+    def _load_app_icon() -> QIcon:
+        """Try several candidate paths and load via QPixmap for reliability."""
+        from PyQt6.QtGui import QPixmap
+        base = Path(__file__).resolve().parent.parent
+        for rel in ("assets/icon.ico", "icon.ico", "assets/icon.png"):
+            p = base / rel
+            if p.exists():
+                pm = QPixmap(str(p))
+                if not pm.isNull():
+                    return QIcon(pm)
+        return QIcon()
 
     # ═════════════════════════════════════════════════════════════
     # Global hotkeys
@@ -377,13 +391,13 @@ class MainWindow(QMainWindow):
             if state == TaskState.FINISHED:
                 self._bridge.tray_message_signal.emit(
                     "AutoClick Vision", "Task finished!",
-                    int(QSystemTrayIcon.MessageIcon.Information),
+                    QSystemTrayIcon.MessageIcon.Information.value,
                 )
                 self.webhook_notifier.notify("Task finished")
             elif state == TaskState.ERROR:
                 self._bridge.tray_message_signal.emit(
                     "AutoClick Vision", "Task error!",
-                    int(QSystemTrayIcon.MessageIcon.Critical),
+                    QSystemTrayIcon.MessageIcon.Critical.value,
                 )
                 self.webhook_notifier.notify("Task error")
         elif state == TaskState.PAUSED:
@@ -459,7 +473,7 @@ class MainWindow(QMainWindow):
         self._bridge.log_signal.emit(f"[ALERT] {msg}")
         self._bridge.tray_message_signal.emit(
             "AutoClick Vision", msg,
-            int(QSystemTrayIcon.MessageIcon.Warning),
+            QSystemTrayIcon.MessageIcon.Warning.value,
         )
         # Notify via webhooks
         self.webhook_notifier.notify(f"Failure-rate alert: {msg}")
@@ -487,7 +501,7 @@ class MainWindow(QMainWindow):
         self._bridge.log_signal.emit("[WATCHDOG] \u26a0 Freeze detected \u2014 attempting auto-restart")
         self._bridge.tray_message_signal.emit(
             "AutoClick Vision", "Watchdog: freeze detected \u2014 restarting!",
-            int(QSystemTrayIcon.MessageIcon.Warning),
+            QSystemTrayIcon.MessageIcon.Warning.value,
         )
         # Auto-restart: stop + re-start the scheduler with the same task
         if self.scheduler._task is not None:
@@ -503,7 +517,7 @@ class MainWindow(QMainWindow):
         self._bridge.log_signal.emit("[WATCHDOG] \u26a0 Prolonged screen inactivity")
         self._bridge.tray_message_signal.emit(
             "AutoClick Vision", "Watchdog: prolonged screen inactivity",
-            int(QSystemTrayIcon.MessageIcon.Warning),
+            QSystemTrayIcon.MessageIcon.Warning.value,
         )
 
     def _on_watchdog_exception(self, exc: Exception):

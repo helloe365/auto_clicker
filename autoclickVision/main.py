@@ -46,11 +46,19 @@ install_global_exception_handler(alert_callback=_show_alert)
 
 def main():
     from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QIcon, QPixmap
     from autoclickVision.ui.main_window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("AutoClick Vision")
     app.setOrganizationName("AutoClickVision")
+
+    # Set application-level icon (loaded via QPixmap for reliability)
+    icon_path = Path(__file__).resolve().parent / "assets" / "icon.ico"
+    if icon_path.exists():
+        pm = QPixmap(str(icon_path))
+        if not pm.isNull():
+            app.setWindowIcon(QIcon(pm))
 
     window = MainWindow()
     window.show()

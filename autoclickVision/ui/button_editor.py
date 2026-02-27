@@ -408,9 +408,9 @@ class ButtonEditor(QWidget):
 
     def _on_select_roi(self):
         ss = self._capture.capture_full()
-        overlay = RegionCaptureOverlay(ss)
-        overlay.region_selected.connect(self._on_roi_selected)
-        overlay.show()
+        self._overlay = RegionCaptureOverlay(ss)
+        self._overlay.region_selected.connect(self._on_roi_selected)
+        self._overlay.show()
 
     def _on_roi_selected(self, x, y, w, h):
         self._edit_roi.setText(f"{x}, {y}, {w}, {h}")
@@ -418,7 +418,7 @@ class ButtonEditor(QWidget):
     def _on_capture_from_screen(self):
         """Let the user draw a rectangle on the screen and save as button image."""
         ss = self._capture.capture_full()
-        overlay = RegionCaptureOverlay(ss)
+        self._overlay = RegionCaptureOverlay(ss)
 
         def _handle_region(x, y, w, h):
             crop = ss[y: y + h, x: x + w]
@@ -429,8 +429,8 @@ class ButtonEditor(QWidget):
             cv2.imwrite(str(fpath), crop)
             self._add_button_from_image(str(fpath))
 
-        overlay.region_selected.connect(_handle_region)
-        overlay.show()
+        self._overlay.region_selected.connect(_handle_region)
+        self._overlay.show()
 
     # ═════════════════════════════════════════════════════════════
     # Test recognition
