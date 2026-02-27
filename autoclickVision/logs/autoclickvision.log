@@ -340,3 +340,23 @@ TypeError: int() argument must be a string, a bytes-like object or a real number
 2026-02-27 22:07:09,260 [INFO] autoclickVision.core.watchdog: Watchdog stopped
 2026-02-27 22:07:09,260 [INFO] autoclickVision.core.scheduler: [22:07:09] ⏹ Task stopped
 2026-02-27 22:07:09,261 [INFO] autoclickVision.core.watchdog: Watchdog stopped
+2026-02-27 22:10:22,946 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:07,640 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:09,000 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:11,337 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:14,259 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:18,271 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:25,012 [ERROR] autoclickVision.ui.sequence_editor: Failed to apply text sequence: No valid steps could be parsed from the input text.
+2026-02-27 22:15:28,125 [INFO] autoclickVision.core.scheduler: [22:15:28] ▶ Starting task: Untitled Task
+2026-02-27 22:15:28,125 [INFO] autoclickVision.core.scheduler: [22:15:28] ── Round 1/50 ──
+2026-02-27 22:15:28,125 [INFO] autoclickVision.core.watchdog: Watchdog started (heartbeat timeout=60s, inactivity timeout=120s)
+2026-02-27 22:15:28,125 [INFO] autoclickVision.core.scheduler: [22:15:28] Step 1: no valid buttons configured — skipping
+2026-02-27 22:15:28,125 [INFO] autoclickVision.core.scheduler: [22:15:28] ── Round 1 done: ✔0 ✖0 ⏭1 ──
+2026-02-27 22:15:28,125 [INFO] autoclickVision.core.scheduler: [22:15:28] Waiting 10.0s before next round…
+2026-02-27 22:15:28,672 [INFO] autoclickVision.core.scheduler: [22:15:28] ⏸ Task paused
+2026-02-27 22:16:15,363 [INFO] autoclickVision.core.scheduler: [22:16:15] ── Round 2/50 ──
+2026-02-27 22:16:15,363 [INFO] autoclickVision.core.watchdog: Watchdog stopped
+2026-02-27 22:16:15,364 [INFO] autoclickVision.core.scheduler: [22:16:15] ── Round 2 done: ✔0 ✖0 ⏭0 ──
+2026-02-27 22:16:15,364 [INFO] autoclickVision.core.scheduler: [22:16:15] ⏹ Task stopped
+2026-02-27 22:16:15,364 [INFO] autoclickVision.core.scheduler: [22:16:15] Task was stopped
+2026-02-27 22:16:15,364 [INFO] autoclickVision.core.watchdog: Watchdog stopped

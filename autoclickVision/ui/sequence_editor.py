@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QStackedWidget,
     QVBoxLayout,
@@ -50,6 +51,18 @@ from ..core.scheduler import (
 
 logger = logging.getLogger(__name__)
 
+# Rotating palette for step cards (bg, border)
+_CARD_COLORS = [
+    ("#e8f0fe", "#4285f4"),  # blue
+    ("#fce8e6", "#ea4335"),  # red
+    ("#e6f4ea", "#34a853"),  # green
+    ("#fef7e0", "#fbbc04"),  # yellow
+    ("#f3e8fd", "#a142f4"),  # purple
+    ("#e0f7fa", "#00acc1"),  # cyan
+    ("#fce4ec", "#e91e63"),  # pink
+    ("#fff3e0", "#ff9800"),  # orange
+]
+
 
 class StepCard(QWidget):
     """A compact card representing one sequence step."""
@@ -58,10 +71,12 @@ class StepCard(QWidget):
     changed = pyqtSignal()
     selected = pyqtSignal(object)
 
-    def __init__(self, step: StepConfig, available_buttons: List[ButtonConfig], parent=None):
+    def __init__(self, step: StepConfig, available_buttons: List[ButtonConfig],
+                 color_index: int = 0, parent=None):
         super().__init__(parent)
         self.step = step
         self._buttons = available_buttons
+        self._color_index = color_index % len(_CARD_COLORS)
         self._selected = False
         self._build_ui()
 
@@ -130,13 +145,16 @@ class StepCard(QWidget):
         layout.addRow(btn_remove)
 
     def _update_style(self):
+        bg, border = _CARD_COLORS[self._color_index]
         if self._selected:
             self.setStyleSheet(
-                "StepCard { border: 2px solid #3b82f6; border-radius: 4px; background: #e0edff; }"
+                f"StepCard {{ border: 2px solid {border}; border-radius: 6px; "
+                f"background: {bg}; padding: 4px; }}"
             )
         else:
             self.setStyleSheet(
-                "StepCard { border: 1px solid #aaa; border-radius: 4px; background: #f9f9f9; }"
+                f"StepCard {{ border: 1px solid {border}; border-radius: 6px; "
+                f"background: {bg}; padding: 4px; }}"
             )
 
     def set_selected(self, on: bool):
@@ -265,8 +283,18 @@ class SequenceEditor(QWidget):
         # -- Page 0: Visual mode ------
         visual_page = QWidget()
         vl = QVBoxLayout(visual_page)
-        self._card_container = QVBoxLayout()
-        vl.addLayout(self._card_container)
+
+        # Scrollable card area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_content = QWidget()
+        self._card_container = QVBoxLayout(scroll_content)
+        self._card_container.setSpacing(8)
+        self._card_container.addStretch()  # push cards to the top
+        scroll.setWidget(scroll_content)
+        vl.addWidget(scroll, 1)  # stretch factor = 1 so scroll takes available space
+
         btn_add_step = QPushButton("+ Add Step")
         btn_add_step.clicked.connect(self._on_add_step)
         vl.addWidget(btn_add_step)
@@ -280,7 +308,6 @@ class SequenceEditor(QWidget):
         move_row.addWidget(btn_up)
         move_row.addWidget(btn_down)
         vl.addLayout(move_row)
-        vl.addStretch()
         self._stack.addWidget(visual_page)
 
         # -- Page 1: Text mode ------
@@ -405,15 +432,24 @@ class SequenceEditor(QWidget):
             c.deleteLater()
         self._cards.clear()
 
+        # Remove the trailing stretch item before adding new cards
+        stretch_idx = self._card_container.count() - 1
+        if stretch_idx >= 0:
+            item = self._card_container.takeAt(stretch_idx)
+            del item
+
         buttons = self._available_buttons()
         for i, step in enumerate(self._steps):
-            card = StepCard(step, buttons)
+            card = StepCard(step, buttons, color_index=i)
             card.removed.connect(self._on_remove_step)
             card.selected.connect(self._on_card_selected)
             if i == self._selected_idx:
                 card.set_selected(True)
             self._card_container.addWidget(card)
             self._cards.append(card)
+
+        # Re-add stretch at the end to push cards to the top
+        self._card_container.addStretch()
 
     # ═════════════════════════════════════════════════════════════
     # Text mode
