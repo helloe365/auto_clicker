@@ -1,31 +1,31 @@
-# AutoClick Vision — 完整开发 TODO
+# AutoClick Vision — Full Development TODO
 
-> 基于图像识别的屏幕按钮自动点击工具
-> 技术栈：Python + OpenCV + PyAutoGUI + PyQt6
+> An image-recognition-based tool for automatically detecting and clicking on-screen buttons
+> Stack: Python + OpenCV + PyAutoGUI + PyQt6
 
 ---
 
-## 📁 项目结构规划
+## 📁 Project Structure
 
 ```
 autoclickVision/
 ├── core/
-│   ├── capture.py          # 屏幕截图模块
-│   ├── matcher.py          # 图像识别模块
-│   ├── clicker.py          # 鼠标点击模块
-│   ├── scheduler.py        # 任务调度模块
-│   └── watchdog.py         # 看门狗模块
+│   ├── capture.py          # Screen capture module
+│   ├── matcher.py          # Image recognition module
+│   ├── clicker.py          # Mouse click module
+│   ├── scheduler.py        # Task scheduling module
+│   └── watchdog.py         # Watchdog module
 ├── config/
-│   ├── config_manager.py   # 配置读写
-│   └── presets/            # 预设模板存储目录
+│   ├── config_manager.py   # Config read/write
+│   └── presets/            # Saved preset templates
 ├── ui/
-│   ├── main_window.py      # 主窗口
-│   ├── button_editor.py    # 按钮配置面板
-│   ├── sequence_editor.py  # 序列编排面板
-│   └── log_viewer.py       # 日志查看面板
-├── logs/                   # 运行日志与截图存档
-├── assets/                 # UI 图标资源
-├── tests/                  # 单元测试
+│   ├── main_window.py      # Main window
+│   ├── button_editor.py    # Button configuration panel
+│   ├── sequence_editor.py  # Sequence editor panel
+│   └── log_viewer.py       # Log viewer panel
+├── logs/                   # Runtime logs and screenshot archives
+├── assets/                 # UI icon resources
+├── tests/                  # Unit tests
 ├── requirements.txt
 ├── README.md
 └── main.py
@@ -33,37 +33,37 @@ autoclickVision/
 
 ---
 
-## 🔧 PHASE 1 — 核心识别引擎
+## 🔧 PHASE 1 — Core Recognition Engine
 
-### 1.1 屏幕截图模块 `capture.py`
-- [ ] 实现全屏截图（基于 `mss` 库，性能优于 PyAutoGUI）
-- [ ] 支持**区域截图**，可指定矩形 ROI（Region of Interest）
-- [ ] 截图结果转为 OpenCV `numpy` 格式
-- [ ] 支持多显示器选择
+### 1.1 Screen Capture Module `capture.py`
+- [ ] Implement full-screen capture (using `mss` library, faster than PyAutoGUI)
+- [ ] Support **region capture** with a configurable rectangular ROI (Region of Interest)
+- [ ] Convert captured frames to OpenCV `numpy` format
+- [ ] Support multi-monitor selection
 
-### 1.2 图像匹配模块 `matcher.py`
-- [ ] 实现基础模板匹配（`cv2.matchTemplate` + `TM_CCOEFF_NORMED`）
-- [ ] 支持**自定义置信度阈值**（per-button 配置）
-- [ ] 支持**多尺度匹配**（缩放范围 0.7x ~ 1.3x，步进 0.05）
-- [ ] 支持**灰度模式匹配**（应对按钮颜色变化/高亮状态）
-- [ ] 支持 SIFT/ORB 特征点匹配（可选，用于应对旋转/形变按钮）
-- [ ] 返回最佳匹配坐标、置信度分数、匹配区域矩形
-- [ ] 实现**限定区域识别**，只在指定屏幕区域内搜索
-- [ ] 识别失败时支持配置策略：`retry` / `skip` / `abort` / `alert`
+### 1.2 Image Matching Module `matcher.py`
+- [ ] Implement basic template matching (`cv2.matchTemplate` + `TM_CCOEFF_NORMED`)
+- [ ] Support **per-button custom confidence threshold**
+- [ ] Support **multi-scale matching** (scale range 0.7x ~ 1.3x, step 0.05)
+- [ ] Support **grayscale matching mode** (handles color changes / highlighted button states)
+- [ ] Support SIFT/ORB feature-point matching (optional, for rotated or deformed buttons)
+- [ ] Return best-match coordinates, confidence score, and bounding rectangle
+- [ ] Implement **region-restricted recognition** — search only within a specified screen area
+- [ ] Configurable failure strategy per button: `retry` / `skip` / `abort` / `alert`
 
-### 1.3 鼠标点击模块 `clicker.py`
-- [ ] 封装单击、双击、右键点击、长按
-- [ ] 点击坐标支持**随机偏移**（±N 像素，模拟人工点击）
-- [ ] 鼠标移动支持**贝塞尔曲线轨迹**（避免直线移动被检测）
-- [ ] 移动速度支持随机化（duration 随机浮动）
-- [ ] 支持 `PyDirectInput` 模式（用于全屏游戏等需要直接输入的场景）
+### 1.3 Mouse Click Module `clicker.py`
+- [ ] Wrap single click, double click, right click, and long press
+- [ ] Support **random coordinate offset** on click (±N pixels to simulate human behavior)
+- [ ] Support **Bézier curve mouse movement** (avoids straight-line detection)
+- [ ] Randomize movement speed (randomized duration per move)
+- [ ] Support `PyDirectInput` mode (for fullscreen games requiring direct input injection)
 
 ---
 
-## 🔧 PHASE 2 — 任务调度系统
+## 🔧 PHASE 2 — Task Scheduling System
 
-### 2.1 按钮配置数据结构
-- [ ] 定义 `ButtonConfig` 数据类：
+### 2.1 Button Config Data Structure
+- [ ] Define `ButtonConfig` dataclass:
   ```
   id, name, image_path, confidence,
   click_type, click_offset_range,
@@ -71,107 +71,107 @@ autoclickVision/
   region (ROI), fallback_action
   ```
 
-### 2.2 序列编排模块 `scheduler.py`
-- [ ] 支持定义点击序列，例如 `A*3 -> B -> C*2`
-- [ ] 支持**按钮内延迟**（同一按钮多次点击之间的间隔）
-- [ ] 支持**按钮间延迟**（不同按钮之间的间隔）
-- [ ] 以上延迟均支持：固定值 / 随机范围（min~max）/ 默认随机
-- [ ] 支持**条件步骤**：等待某按钮出现后再继续，超时执行备用逻辑
-- [ ] 支持步骤级别的**互斥识别**（多个候选按钮，识别到哪个点哪个）
-- [ ] 支持"等待按钮消失"作为步骤触发条件
+### 2.2 Sequence Scheduler `scheduler.py`
+- [ ] Support defining click sequences, e.g. `A*3 -> B -> C*2`
+- [ ] Support **intra-button delay** (interval between repeated clicks of the same button)
+- [ ] Support **inter-button delay** (interval between different buttons in a sequence)
+- [ ] All delays support: fixed value / random range (min~max) / default random
+- [ ] Support **conditional steps**: wait for a button to appear before proceeding, with timeout fallback
+- [ ] Support **mutual-exclusion recognition** at the step level (click whichever candidate button is found first)
+- [ ] Support "wait for button to disappear" as a step trigger condition
 
-### 2.3 循环控制
-- [ ] 支持自定义**循环轮数**（默认 50 轮，0 = 无限循环）
-- [ ] 支持自定义**每轮间隔时间**（默认 10s）
-- [ ] 支持**时间计划触发**：指定具体时刻开始执行
-- [ ] 支持多任务串联：任务 A 完成后自动切换到任务 B
+### 2.3 Loop Control
+- [ ] Configurable **loop count** (default 50, 0 = infinite loop)
+- [ ] Configurable **interval between rounds** (default 10s)
+- [ ] Support **scheduled start**: begin execution at a specific date/time
+- [ ] Support chained multi-task execution: automatically switch to task B after task A completes
 
-### 2.4 看门狗模块 `watchdog.py`
-- [ ] 监控主线程是否卡死，超时自动重启任务
-- [ ] 检测屏幕是否长时间无变化（可能卡死或断连）
-- [ ] 异常发生时触发通知（系统托盘弹窗 / Webhook）
-
----
-
-## 🔧 PHASE 3 — 配置管理
-
-### 3.1 配置结构设计
-- [ ] 使用 JSON / YAML 格式存储完整任务配置
-- [ ] 配置内容包括：按钮列表、序列定义、延迟参数、循环设置、全局选项
-- [ ] 支持配置文件**导入 / 导出**
-- [ ] 支持**预设模板**保存与加载（存入 `config/presets/`）
-- [ ] 配置版本管理，兼容旧版配置文件升级
-
-### 3.2 配置管理器 `config_manager.py`
-- [ ] 实现配置读取、验证、写入
-- [ ] 配置变更自动保存（防止意外丢失）
-- [ ] 支持配置加密（可选，保护敏感路径信息）
+### 2.4 Watchdog Module `watchdog.py`
+- [ ] Monitor the main thread for freezes; auto-restart the task on timeout
+- [ ] Detect prolonged screen inactivity (possible freeze or disconnection)
+- [ ] Trigger notifications on exception (system tray popup / Webhook)
 
 ---
 
-## 🔧 PHASE 4 — 用户界面
+## 🔧 PHASE 3 — Configuration Management
 
-### 4.1 主窗口 `main_window.py`
-- [ ] 顶部工具栏：启动 / 暂停 / 停止 / 设置
-- [ ] 全局热键绑定：`F9` 启动，`F10` 暂停，`F11` 停止
-- [ ] 系统托盘图标，支持最小化到托盘后台运行
-- [ ] 实时状态显示：当前执行步骤、当前轮次、已用时间
-- [ ] 整体进度条：已完成轮数 / 总轮数
+### 3.1 Config Schema Design
+- [ ] Store full task configuration in JSON / YAML format
+- [ ] Config includes: button list, sequence definition, delay parameters, loop settings, global options
+- [ ] Support config file **import / export**
+- [ ] Support **preset templates**: save and load from `config/presets/`
+- [ ] Config versioning: backward-compatible migration for older config files
 
-### 4.2 按钮配置面板 `button_editor.py`
-- [ ] 拖拽上传按钮图片，支持批量导入
-- [ ] 每个按钮可单独配置：名称、置信度、点击类型、ROI 区域
-- [ ] **识别测试按钮**：立即截屏并高亮显示当前屏幕中的匹配位置
-- [ ] 按钮图片预览（含缩略图）
-- [ ] 支持从屏幕**框选截取**按钮图片（内置截图工具）
-
-### 4.3 序列编排面板 `sequence_editor.py`
-- [ ] 可视化拖拽排序步骤（卡片式 UI）
-- [ ] 每个步骤可配置：按钮选择、重复次数、点击前延迟、点击后延迟
-- [ ] 序列支持文本模式输入（`A*3 -> B -> C*2` 语法）与可视化模式互相切换
-- [ ] 循环配置：轮数、每轮间隔
-- [ ] 时间计划配置：定时开始、结束条件
-
-### 4.4 日志查看面板 `log_viewer.py`
-- [ ] 实时滚动日志输出（时间戳 + 步骤描述 + 结果）
-- [ ] 识别失败时附带**截图缩略图**，可点击放大查看
-- [ ] 每轮执行统计：成功步骤数、失败步骤数、跳过步骤数
-- [ ] 日志导出为 TXT / CSV
-- [ ] 历史运行记录查看
+### 3.2 Config Manager `config_manager.py`
+- [ ] Implement config read, validate, and write
+- [ ] Auto-save on config change (prevent accidental data loss)
+- [ ] Support optional config encryption (protect sensitive path information)
 
 ---
 
-## 🔧 PHASE 5 — 异常处理与通知
+## 🔧 PHASE 4 — User Interface
 
-- [ ] 全局异常捕获，记录错误日志并弹出用户提示
-- [ ] 识别失败超过阈值时触发告警（可配置）
-- [ ] 支持 Webhook 通知（可选）：发送到 Telegram Bot / 企业微信 / 飞书
-- [ ] 系统托盘弹窗通知（任务完成 / 任务异常）
-- [ ] 运行截图存档：每次识别自动保存截图到 `logs/screenshots/`（可开关）
+### 4.1 Main Window `main_window.py`
+- [ ] Top toolbar: Start / Pause / Stop / Settings
+- [ ] Global hotkey bindings: `F9` Start, `F10` Pause, `F11` Stop
+- [ ] System tray icon with minimize-to-tray background running support
+- [ ] Real-time status display: current step, current round, elapsed time
+- [ ] Overall progress bar: completed rounds / total rounds
+
+### 4.2 Button Configuration Panel `button_editor.py`
+- [ ] Drag-and-drop image upload with batch import support
+- [ ] Per-button configuration: name, confidence, click type, ROI region
+- [ ] **Test Recognition button**: take an instant screenshot and highlight all matching positions on screen
+- [ ] Button image preview with thumbnails
+- [ ] Built-in screen region capture tool to crop button images directly from the screen
+
+### 4.3 Sequence Editor Panel `sequence_editor.py`
+- [ ] Visual drag-and-drop step ordering (card-based UI)
+- [ ] Per-step configuration: button selection, repeat count, pre-click delay, post-click delay
+- [ ] Toggle between **text mode** (`A*3 -> B -> C*2` syntax) and **visual mode**
+- [ ] Loop configuration: round count, interval between rounds
+- [ ] Schedule configuration: timed start, stop conditions
+
+### 4.4 Log Viewer Panel `log_viewer.py`
+- [ ] Real-time scrolling log output (timestamp + step description + result)
+- [ ] On recognition failure, attach a **screenshot thumbnail** — click to enlarge
+- [ ] Per-round execution summary: success count, failure count, skipped count
+- [ ] Export logs as TXT / CSV
+- [ ] Browse historical run records
 
 ---
 
-## 🔧 PHASE 6 — 测试与优化
+## 🔧 PHASE 5 — Error Handling & Notifications
 
-### 6.1 单元测试
-- [ ] 测试模板匹配在不同分辨率下的准确率
-- [ ] 测试多尺度匹配的性能（耗时 benchmark）
-- [ ] 测试配置读写的边界情况
-- [ ] 测试序列调度器的延迟精度
-
-### 6.2 性能优化
-- [ ] 截图与匹配在独立线程中运行，不阻塞 UI
-- [ ] 多按钮并行识别（线程池）
-- [ ] 缓存上一次识别结果，相同区域短时间内不重复截图
-
-### 6.3 打包发布
-- [ ] 使用 `PyInstaller` 打包为单一可执行文件（Windows `.exe`）
-- [ ] 打包时内嵌 OpenCV / Qt 依赖，无需用户安装 Python
-- [ ] 提供 `requirements.txt` 供开发者直接运行源码
+- [ ] Global exception handler: log errors and show user-facing alert dialogs
+- [ ] Trigger alert when recognition failure rate exceeds a configurable threshold
+- [ ] Optional Webhook notifications: send to Telegram Bot / DingTalk / Slack
+- [ ] System tray popup notifications (task complete / task error)
+- [ ] Screenshot archiving: auto-save each recognition screenshot to `logs/screenshots/` (toggleable)
 
 ---
 
-## 📦 依赖清单 `requirements.txt`
+## 🔧 PHASE 6 — Testing & Optimization
+
+### 6.1 Unit Tests
+- [ ] Test template matching accuracy across different screen resolutions
+- [ ] Benchmark multi-scale matching performance (latency profiling)
+- [ ] Test config read/write edge cases
+- [ ] Test sequence scheduler delay precision
+
+### 6.2 Performance Optimization
+- [ ] Run screen capture and matching in a separate thread to avoid blocking the UI
+- [ ] Parallel multi-button recognition using a thread pool
+- [ ] Cache the last recognition result; skip re-capturing the same region within a short window
+
+### 6.3 Build & Distribution
+- [ ] Package as a single executable with `PyInstaller` (Windows `.exe`)
+- [ ] Bundle OpenCV / Qt dependencies — no Python installation required for end users
+- [ ] Provide `requirements.txt` for developers running from source
+
+---
+
+## 📦 Dependencies `requirements.txt`
 
 ```
 opencv-python>=4.8
@@ -183,22 +183,22 @@ numpy>=1.24
 pyyaml>=6.0
 keyboard>=0.13
 Pillow>=10.0
-requests>=2.31       # Webhook 通知
-schedule>=1.2        # 定时任务
-pyinstaller>=6.0     # 打包
+requests>=2.31       # Webhook notifications
+schedule>=1.2        # Scheduled task triggering
+pyinstaller>=6.0     # Build & packaging
 ```
 
 ---
 
-## 🚀 开发优先级
+## 🚀 Development Priority
 
-| 优先级 | 内容 |
-|--------|------|
-| P0（必须） | 核心识别引擎、基础序列调度、简单 UI |
-| P1（重要） | 置信度配置、延迟配置、循环控制、日志 |
-| P2（增强） | 多尺度匹配、条件步骤、热键控制、托盘 |
-| P3（可选） | SIFT匹配、Webhook通知、定时触发、加密配置 |
+| Priority | Scope |
+|----------|-------|
+| P0 — Must Have | Core recognition engine, basic sequence scheduling, minimal UI |
+| P1 — Important | Confidence config, delay config, loop control, logging |
+| P2 — Enhanced | Multi-scale matching, conditional steps, hotkeys, system tray |
+| P3 — Optional | SIFT matching, Webhook alerts, scheduled triggers, encrypted config |
 
 ---
 
-*最后更新：2026-02-27*
+*Last updated: 2026-02-27*
