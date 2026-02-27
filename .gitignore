@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyo
+autoclickVision/core/__pycache__/
+autoclickVision/config/__pycache__/
+ui/__pycache__/
+autoclickVision/ui/__pycache__/
 
 # ─── Virtual environments ────────────────────────────────
 .venv/
