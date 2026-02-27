@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
@@ -423,15 +424,30 @@ class SequenceEditor(QWidget):
         if not text:
             self._steps.clear()
             self._rebuild_cards()
+            QMessageBox.information(self, "Success", "Sequence cleared successfully.")
             return
-        task = self._config.task
-        button_map = {}
-        if task:
-            for b in task.buttons:
-                button_map[b.name] = b.id
-                button_map[b.id] = b.id
-        self._steps = parse_sequence_text(text, button_map)
-        self._rebuild_cards()
+        try:
+            task = self._config.task
+            button_map = {}
+            if task:
+                for b in task.buttons:
+                    button_map[b.name] = b.id
+                    button_map[b.id] = b.id
+            parsed = parse_sequence_text(text, button_map)
+            if not parsed:
+                raise ValueError("No valid steps could be parsed from the input text.")
+            self._steps = parsed
+            self._rebuild_cards()
+            QMessageBox.information(
+                self, "Success",
+                f"Sequence applied successfully — {len(self._steps)} step(s) loaded.",
+            )
+        except Exception as exc:
+            logger.error("Failed to apply text sequence: %s", exc)
+            QMessageBox.critical(
+                self, "Error",
+                f"Failed to apply sequence:\n{exc}",
+            )
 
     # ═════════════════════════════════════════════════════════════
     # Public API

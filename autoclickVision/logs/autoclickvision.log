@@ -322,3 +322,21 @@ TypeError: int() argument must be a string, a bytes-like object or a real number
 2026-02-27 21:38:46,388 [INFO] autoclickVision.core.scheduler: [21:38:46] ── Round 4 done: ✔6 ✖0 ⏭0 ──
 2026-02-27 21:38:46,389 [INFO] autoclickVision.core.scheduler: [21:38:46] ✔ Task finished
 2026-02-27 21:38:46,394 [INFO] autoclickVision.core.watchdog: Watchdog stopped
+2026-02-27 22:07:01,027 [INFO] autoclickVision.core.scheduler: [22:07:01] ▶ Starting task: Untitled Task
+2026-02-27 22:07:01,027 [INFO] autoclickVision.core.watchdog: Watchdog started (heartbeat timeout=60s, inactivity timeout=120s)
+2026-02-27 22:07:01,027 [INFO] autoclickVision.core.scheduler: [22:07:01] ── Round 1/50 ──
+2026-02-27 22:07:01,028 [INFO] autoclickVision.core.scheduler: [22:07:01] Step 1: [1] ×3
+2026-02-27 22:07:01,837 [INFO] autoclickVision.core.scheduler: [22:07:01]   ✔ 1 found (1.00) at (142,59) — clicked
+2026-02-27 22:07:02,919 [INFO] autoclickVision.core.scheduler: [22:07:02]   ✔ 1 found (0.94) at (142,59) — clicked
+2026-02-27 22:07:04,044 [INFO] autoclickVision.core.scheduler: [22:07:04]   ✔ 1 found (0.94) at (142,59) — clicked
+2026-02-27 22:07:04,552 [INFO] autoclickVision.core.scheduler: [22:07:04] Step 2: [2] ×1
+2026-02-27 22:07:05,196 [INFO] autoclickVision.core.scheduler: [22:07:05]   ✔ 2 found (0.89) at (142,172) — clicked
+2026-02-27 22:07:05,932 [INFO] autoclickVision.core.scheduler: [22:07:05] Step 3: [3] ×2
+2026-02-27 22:07:06,447 [INFO] autoclickVision.core.scheduler: [22:07:06]   ✔ 3 found (1.00) at (1852,295) — clicked
+2026-02-27 22:07:07,530 [INFO] autoclickVision.core.scheduler: [22:07:07]   ✔ 3 found (0.97) at (1852,295) — clicked
+2026-02-27 22:07:07,961 [INFO] autoclickVision.core.scheduler: [22:07:07] ── Round 1 done: ✔6 ✖0 ⏭0 ──
+2026-02-27 22:07:07,962 [INFO] autoclickVision.core.scheduler: [22:07:07] Waiting 10.0s before next round…
+2026-02-27 22:07:09,259 [INFO] autoclickVision.core.scheduler: [22:07:09] Task was stopped
+2026-02-27 22:07:09,260 [INFO] autoclickVision.core.watchdog: Watchdog stopped
+2026-02-27 22:07:09,260 [INFO] autoclickVision.core.scheduler: [22:07:09] ⏹ Task stopped
+2026-02-27 22:07:09,261 [INFO] autoclickVision.core.watchdog: Watchdog stopped
