@@ -196,14 +196,25 @@ class Clicker:
         y: int,
         duration: float = 1.0,
         button: str = "left",
+        offset: Optional[int] = None,
     ) -> Tuple[int, int]:
         """
         Press and hold at (x, y) for *duration* seconds.
 
+        Args:
+            x, y: Target screen coordinates.
+            duration: How long to hold the button down.
+            button: ``"left"`` | ``"right"`` | ``"middle"``.
+            offset: Override instance ``offset_range`` for this call.
+
         Returns:
             The actual (x, y) where the press landed after jitter.
         """
+        old_offset = self.offset_range
+        if offset is not None:
+            self.offset_range = offset
         tx, ty = self._jitter(x, y)
+        self.offset_range = old_offset
         logger.debug("long_press (%d, %d) → jittered (%d, %d), %.2fs",
                       x, y, tx, ty, duration)
         self._move_to(tx, ty)

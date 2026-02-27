@@ -20,6 +20,7 @@ import re
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -185,6 +186,8 @@ class TaskConfig:
     round_interval_delay: DelayConfig = field(default_factory=lambda: DelayConfig(mode="fixed", fixed_value=10.0))
     scheduled_start: Optional[str] = None  # ISO datetime string
     chain_task_path: Optional[str] = None  # next task config to run after this one
+    stop_after_consecutive_failures: int = 0  # 0 = disabled
+    stop_after_duration_minutes: int = 0  # 0 = disabled
 
     def button_by_id(self, bid: str) -> Optional[ButtonConfig]:
         for b in self.buttons:
@@ -202,6 +205,8 @@ class TaskConfig:
             "round_interval_delay": self.round_interval_delay.to_dict(),
             "scheduled_start": self.scheduled_start,
             "chain_task_path": self.chain_task_path,
+            "stop_after_consecutive_failures": self.stop_after_consecutive_failures,
+            "stop_after_duration_minutes": self.stop_after_duration_minutes,
         }
 
     @classmethod
@@ -292,6 +297,8 @@ class SequenceScheduler:
         on_state_change: Optional[Callable[[TaskState], None]] = None,
         on_stats_update: Optional[Callable[[RunStats], None]] = None,
         on_failure_screenshot: Optional[Callable[[np.ndarray, str], None]] = None,
+        on_chain_task: Optional[Callable[[str], None]] = None,
+        on_recognition_result: Optional[Callable[[bool], None]] = None,
     ):
         self.capture = capture
         self.matcher = matcher
@@ -300,6 +307,8 @@ class SequenceScheduler:
         self._on_state_change = on_state_change or (lambda s: None)
         self._on_stats_update = on_stats_update or (lambda s: None)
         self._on_failure_screenshot = on_failure_screenshot or (lambda img, msg: None)
+        self._on_chain_task = on_chain_task or (lambda path: None)
+        self._on_recognition_result = on_recognition_result or (lambda success: None)
 
         self._state = TaskState.IDLE
         self._thread: Optional[threading.Thread] = None
@@ -310,6 +319,14 @@ class SequenceScheduler:
         self._task: Optional[TaskConfig] = None
         self._stats = RunStats()
         self._template_cache: Dict[str, np.ndarray] = {}
+
+        # Screenshot cache: avoid re-capturing within a short window
+        self._screenshot_cache: Optional[np.ndarray] = None
+        self._screenshot_cache_time: float = 0.0
+        self._screenshot_cache_ttl: float = 0.15  # 150ms
+
+        # Consecutive failure tracking (for stop conditions)
+        self._consecutive_failures: int = 0
 
     # ─── State management ───────────────────────────────────────
 
@@ -342,6 +359,9 @@ class SequenceScheduler:
         self._pause_event.set()
         self._template_cache.clear()
         self._stats = RunStats(total_rounds=task.loop_count, total_steps=len(task.steps))
+        self._screenshot_cache = None
+        self._screenshot_cache_time = 0.0
+        self._consecutive_failures = 0
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -365,6 +385,25 @@ class SequenceScheduler:
 
     def is_running(self) -> bool:
         return self._state in (TaskState.RUNNING, TaskState.PAUSED)
+
+    # ─── Cached screenshot capture ───────────────────────────────
+
+    def _capture_screenshot(self) -> np.ndarray:
+        """Capture a screenshot, using the cache if still fresh."""
+        now = time.time()
+        if (
+            self._screenshot_cache is not None
+            and (now - self._screenshot_cache_time) < self._screenshot_cache_ttl
+        ):
+            return self._screenshot_cache
+        frame = self.capture.capture_full()
+        self._screenshot_cache = frame
+        self._screenshot_cache_time = now
+        return frame
+
+    def _invalidate_screenshot_cache(self) -> None:
+        self._screenshot_cache = None
+        self._screenshot_cache_time = 0.0
 
     # ─── Template loading (cached) ──────────────────────────────
 
@@ -406,7 +445,8 @@ class SequenceScheduler:
             if self._stop_event.is_set():
                 return False
             self._pause_event.wait()
-            screenshot = self.capture.capture_full()
+            self._invalidate_screenshot_cache()
+            screenshot = self._capture_screenshot()
             found_any = any(self._recognise(b, screenshot).found for b in buttons)
             if step.condition == StepCondition.WAIT_APPEAR and found_any:
                 return True
@@ -439,17 +479,37 @@ class SequenceScheduler:
                 return
             self._pause_event.wait()
 
-            screenshot = self.capture.capture_full()
+            self._invalidate_screenshot_cache()
+            screenshot = self._capture_screenshot()
 
             # Mutual-exclusion: try each button, click the first found
+            # Use parallel recognition when there are multiple buttons
             matched_button: Optional[ButtonConfig] = None
             result: Optional[MatchResult] = None
-            for btn in buttons:
-                res = self._recognise(btn, screenshot)
-                if res.found:
-                    matched_button = btn
-                    result = res
-                    break
+
+            if len(buttons) > 1:
+                # Parallel multi-button recognition via thread pool
+                with ThreadPoolExecutor(max_workers=min(len(buttons), 4)) as pool:
+                    futures = {
+                        pool.submit(self._recognise, btn, screenshot): btn
+                        for btn in buttons
+                    }
+                    for future in as_completed(futures):
+                        res = future.result()
+                        if res.found:
+                            matched_button = futures[future]
+                            result = res
+                            # Cancel remaining futures
+                            for f in futures:
+                                f.cancel()
+                            break
+            else:
+                for btn in buttons:
+                    res = self._recognise(btn, screenshot)
+                    if res.found:
+                        matched_button = btn
+                        result = res
+                        break
 
             if matched_button is not None and result is not None and result.center is not None:
                 cx, cy = result.center
@@ -459,7 +519,11 @@ class SequenceScheduler:
                     f"({result.confidence:.2f}) at ({cx},{cy}) — clicked"
                 )
                 self._stats.current_round_stats.success += 1
+                self._consecutive_failures = 0
+                self._on_recognition_result(True)
             else:
+                self._consecutive_failures += 1
+                self._on_recognition_result(False)
                 # Handle failure for the first button (primary)
                 primary = buttons[0]
                 handled = self._handle_failure(primary, step_idx, rep, screenshot)
@@ -484,7 +548,7 @@ class SequenceScheduler:
         elif ct == ClickType.RIGHT:
             self.clicker.right_click(x, y, offset=button.click_offset_range)
         elif ct == ClickType.LONG_PRESS:
-            self.clicker.long_press(x, y, duration=button.long_press_duration)
+            self.clicker.long_press(x, y, duration=button.long_press_duration, offset=button.click_offset_range)
 
     def _handle_failure(
         self,
@@ -571,6 +635,13 @@ class SequenceScheduler:
                     break
                 self._pause_event.wait()
 
+                # Duration-limit stop condition
+                if task.stop_after_duration_minutes > 0:
+                    elapsed_min = (time.time() - start_time) / 60.0
+                    if elapsed_min >= task.stop_after_duration_minutes:
+                        self._log(f"⏹ Duration limit reached ({task.stop_after_duration_minutes}min)")
+                        break
+
                 rnd += 1
                 self._stats.rounds_completed = rnd - 1
                 self._stats.current_round_stats = RoundStats()
@@ -583,6 +654,18 @@ class SequenceScheduler:
                     self._stats.elapsed = time.time() - start_time
                     self._on_stats_update(self._stats)
                     self._execute_step(step, si)
+
+                    # Consecutive-failure stop condition
+                    if (
+                        task.stop_after_consecutive_failures > 0
+                        and self._consecutive_failures >= task.stop_after_consecutive_failures
+                    ):
+                        self._log(
+                            f"⏹ Consecutive failure limit reached "
+                            f"({self._consecutive_failures} failures)"
+                        )
+                        self._stop_event.set()
+                        break
 
                 self._stats.rounds_completed = rnd
                 self._stats.elapsed = time.time() - start_time
@@ -618,4 +701,4 @@ class SequenceScheduler:
             and self._state == TaskState.FINISHED
         ):
             self._log(f"Chaining to next task: {task.chain_task_path}")
-            # The caller (UI / config manager) should handle loading the next task.
+            self._on_chain_task(task.chain_task_path)

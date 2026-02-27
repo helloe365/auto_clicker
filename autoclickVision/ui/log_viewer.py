@@ -18,12 +18,15 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QDialog,
     QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
     QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -39,6 +42,7 @@ class LogViewer(QWidget):
         super().__init__(parent)
         self._log_lines: List[str] = []
         self._screenshots: List[Tuple[str, str]] = []  # (path, tag)
+        self._round_summaries: List[Tuple[int, int, int, int]] = []  # (round, ok, fail, skip)
         self._build_ui()
 
     def _build_ui(self):
@@ -53,6 +57,16 @@ class LogViewer(QWidget):
         self._text.setStyleSheet("QTextEdit { font-family: Consolas, monospace; font-size: 12px; }")
         splitter.addWidget(self._text)
 
+        # Middle: round summary table
+        grp_summary = QGroupBox("Round Summary")
+        sl = QVBoxLayout(grp_summary)
+        self._summary_table = QTableWidget(0, 4)
+        self._summary_table.setHorizontalHeaderLabels(["Round", "Success", "Failure", "Skipped"])
+        self._summary_table.setMaximumHeight(140)
+        self._summary_table.horizontalHeader().setStretchLastSection(True)
+        sl.addWidget(self._summary_table)
+        splitter.addWidget(grp_summary)
+
         # Bottom: screenshot list
         self._screenshot_list = QListWidget()
         self._screenshot_list.setMaximumHeight(150)
@@ -62,6 +76,7 @@ class LogViewer(QWidget):
 
         splitter.setStretchFactor(0, 4)
         splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(2, 1)
         root.addWidget(splitter)
 
         # Controls
@@ -72,9 +87,12 @@ class LogViewer(QWidget):
         btn_export_txt.clicked.connect(self._on_export_txt)
         btn_export_csv = QPushButton("Export CSV")
         btn_export_csv.clicked.connect(self._on_export_csv)
+        btn_history = QPushButton("History")
+        btn_history.clicked.connect(self._on_browse_history)
         btn_row.addWidget(btn_clear)
         btn_row.addWidget(btn_export_txt)
         btn_row.addWidget(btn_export_csv)
+        btn_row.addWidget(btn_history)
         btn_row.addStretch()
         root.addLayout(btn_row)
 
@@ -94,6 +112,24 @@ class LogViewer(QWidget):
         self._text.clear()
         self._screenshots.clear()
         self._screenshot_list.clear()
+        self._round_summaries.clear()
+        self._summary_table.setRowCount(0)
+
+    # ═════════════════════════════════════════════════════════════
+    # Round summaries
+    # ═════════════════════════════════════════════════════════════
+
+    def add_round_summary(self, round_num: int, success: int, failure: int, skipped: int):
+        """Append a per-round summary row to the table."""
+        self._round_summaries.append((round_num, success, failure, skipped))
+        row = self._summary_table.rowCount()
+        self._summary_table.insertRow(row)
+        for col, val in enumerate([round_num, success, failure, skipped]):
+            item = QTableWidgetItem(str(val))
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._summary_table.setItem(row, col, item)
+        # Auto-scroll to the newest row
+        self._summary_table.scrollToBottom()
 
     # ═════════════════════════════════════════════════════════════
     # Screenshots
@@ -142,3 +178,71 @@ class LogViewer(QWidget):
                 writer.writerow(["line", "message"])
                 for i, line in enumerate(self._log_lines, 1):
                     writer.writerow([i, line])
+
+    # ═════════════════════════════════════════════════════════════
+    # Historical run browser
+    # ═════════════════════════════════════════════════════════════
+
+    def _on_browse_history(self):
+        """Open a dialog listing past log and crash files."""
+        logs_dir = Path(__file__).resolve().parent.parent / "logs"
+        if not logs_dir.exists():
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "History", "No log files found.")
+            return
+
+        log_files = sorted(logs_dir.glob("*.log"), reverse=True)
+        if not log_files:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "History", "No log files found.")
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Historical Runs")
+        dlg.resize(700, 500)
+        layout = QVBoxLayout(dlg)
+
+        lbl = QLabel(f"Found {len(log_files)} log file(s) in {logs_dir}")
+        layout.addWidget(lbl)
+
+        file_list = QListWidget()
+        for fp in log_files:
+            file_list.addItem(fp.name)
+        layout.addWidget(file_list)
+
+        preview = QTextEdit()
+        preview.setReadOnly(True)
+        preview.setStyleSheet("QTextEdit { font-family: Consolas, monospace; font-size: 11px; }")
+        layout.addWidget(preview)
+
+        def _on_select():
+            items = file_list.selectedItems()
+            if not items:
+                return
+            fname = items[0].text()
+            fpath = logs_dir / fname
+            try:
+                content = fpath.read_text(encoding="utf-8", errors="replace")
+                preview.setPlainText(content)
+            except Exception as e:
+                preview.setPlainText(f"Error reading file: {e}")
+
+        file_list.currentItemChanged.connect(lambda *_: _on_select())
+
+        btn_row = QHBoxLayout()
+        btn_close = QPushButton("Close")
+        btn_close.clicked.connect(dlg.accept)
+        btn_load = QPushButton("Load into viewer")
+        def _load():
+            text = preview.toPlainText()
+            if text:
+                self.clear_log()
+                for line in text.splitlines():
+                    self.append_log(line)
+            dlg.accept()
+        btn_load.clicked.connect(_load)
+        btn_row.addWidget(btn_load)
+        btn_row.addWidget(btn_close)
+        layout.addLayout(btn_row)
+
+        dlg.exec()

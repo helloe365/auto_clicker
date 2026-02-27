@@ -8,5 +8,4 @@ pyyaml>=6.0
 keyboard>=0.13
 Pillow>=10.0
 requests>=2.31
-schedule>=1.2
 pyinstaller>=6.0

@@ -42,9 +42,11 @@ from ..core.clicker import Clicker
 from ..core.matcher import ImageMatcher
 from ..core.scheduler import RunStats, SequenceScheduler, TaskConfig, TaskState
 from ..core.watchdog import Watchdog
+from ..notifications import FailureRateMonitor, WebhookNotifier
 from .button_editor import ButtonEditor
 from .log_viewer import LogViewer
 from .sequence_editor import SequenceEditor
+from .settings_dialog import SettingsDialog
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,7 @@ class _SignalBridge(QObject):
     state_signal = pyqtSignal(str)
     stats_signal = pyqtSignal(object)
     failure_screenshot_signal = pyqtSignal(object, str)
+    tray_message_signal = pyqtSignal(str, str, int)  # title, message, icon_type
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -83,12 +86,42 @@ class MainWindow(QMainWindow):
         self.config_mgr = ConfigManager(auto_save=False)
         self.config_mgr.new_task()
 
+        # Application-wide settings
+        self._settings: dict = {
+            "grayscale": False,
+            "multi_scale": False,
+            "scale_min": 0.7,
+            "scale_max": 1.3,
+            "scale_step": 0.05,
+            "use_bezier": False,
+            "use_directinput": False,
+            "archive_screenshots": True,
+            "failure_rate_threshold": 0.5,
+            "failure_rate_window": 20,
+            "webhooks": [],
+            "stop_after_consecutive_failures": 0,
+            "stop_after_duration_minutes": 0,
+        }
+
+        # Webhook notifier
+        self.webhook_notifier = WebhookNotifier()
+
+        # Failure-rate monitor
+        self.failure_monitor = FailureRateMonitor(
+            threshold=0.5,
+            window=20,
+            on_alert=self._on_failure_rate_alert,
+        )
+
+        self._last_summary_round: int = 0
+
         # Signal bridge
         self._bridge = _SignalBridge()
         self._bridge.log_signal.connect(self._on_log)
         self._bridge.state_signal.connect(self._on_state_change)
         self._bridge.stats_signal.connect(self._on_stats_update)
         self._bridge.failure_screenshot_signal.connect(self._on_failure_screenshot)
+        self._bridge.tray_message_signal.connect(self._on_tray_message)
 
         self.scheduler = SequenceScheduler(
             capture=self.capture,
@@ -98,6 +131,8 @@ class MainWindow(QMainWindow):
             on_state_change=lambda s: self._bridge.state_signal.emit(s.value),
             on_stats_update=lambda s: self._bridge.stats_signal.emit(s),
             on_failure_screenshot=lambda img, tag: self._bridge.failure_screenshot_signal.emit(img, tag),
+            on_chain_task=self._on_chain_task,
+            on_recognition_result=self._on_recognition_result,
         )
 
         self.watchdog = Watchdog(
@@ -149,6 +184,12 @@ class MainWindow(QMainWindow):
         act_save_as = QAction("📄 Save As…", self)
         act_save_as.triggered.connect(self._on_save_as_config)
         tb.addAction(act_save_as)
+
+        tb.addSeparator()
+
+        act_settings = QAction("Settings", self)
+        act_settings.triggered.connect(self._on_settings)
+        tb.addAction(act_settings)
 
     def _build_central(self):
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -227,9 +268,23 @@ class MainWindow(QMainWindow):
         task.loop_count = seq_settings.get("loop_count", 50)
         task.round_interval = seq_settings.get("round_interval", 10.0)
         task.scheduled_start = seq_settings.get("scheduled_start")
-        # Apply matcher settings
-        self.matcher.grayscale = False
-        self.matcher.multi_scale = False
+        # Apply matcher settings from the settings dialog
+        self.matcher.grayscale = self._settings.get("grayscale", False)
+        self.matcher.multi_scale = self._settings.get("multi_scale", False)
+        self.matcher.scale_range = (
+            self._settings.get("scale_min", 0.7),
+            self._settings.get("scale_max", 1.3),
+        )
+        self.matcher.scale_step = self._settings.get("scale_step", 0.05)
+        # Apply clicker settings
+        self.clicker.use_bezier = self._settings.get("use_bezier", False)
+        # Update failure monitor parameters
+        self.failure_monitor.threshold = self._settings.get("failure_rate_threshold", 0.5)
+        self.failure_monitor.window = self._settings.get("failure_rate_window", 20)
+        self.failure_monitor.reset()
+        # Stop conditions
+        task.stop_after_consecutive_failures = self._settings.get("stop_after_consecutive_failures", 0)
+        task.stop_after_duration_minutes = self._settings.get("stop_after_duration_minutes", 0)
         return task
 
     def _on_start(self):
@@ -240,6 +295,9 @@ class MainWindow(QMainWindow):
         if not task.steps:
             QMessageBox.warning(self, "No Steps", "Please add at least one step to the sequence.")
             return
+        # Sync webhook registrations
+        self._sync_webhooks()
+        self._last_summary_round = 0
         self.scheduler.start(task)
         self.watchdog.start()
         self._act_start.setEnabled(False)
@@ -317,9 +375,17 @@ class MainWindow(QMainWindow):
             self._act_stop.setEnabled(False)
             self.watchdog.stop()
             if state == TaskState.FINISHED:
-                self._tray.showMessage("AutoClick Vision", "Task finished!", QSystemTrayIcon.MessageIcon.Information)
+                self._bridge.tray_message_signal.emit(
+                    "AutoClick Vision", "Task finished!",
+                    int(QSystemTrayIcon.MessageIcon.Information),
+                )
+                self.webhook_notifier.notify("Task finished")
             elif state == TaskState.ERROR:
-                self._tray.showMessage("AutoClick Vision", "Task error!", QSystemTrayIcon.MessageIcon.Critical)
+                self._bridge.tray_message_signal.emit(
+                    "AutoClick Vision", "Task error!",
+                    int(QSystemTrayIcon.MessageIcon.Critical),
+                )
+                self.webhook_notifier.notify("Task error")
         elif state == TaskState.PAUSED:
             self._act_start.setEnabled(True)
             self._act_pause.setEnabled(True)
@@ -335,9 +401,18 @@ class MainWindow(QMainWindow):
             self._progress.setValue(pct)
         else:
             self._progress.setValue(0)
+        # Emit per-round summary when a round completes
+        if stats.rounds_completed > self._last_summary_round:
+            self._last_summary_round = stats.rounds_completed
+            rs = stats.current_round_stats
+            self.log_viewer.add_round_summary(
+                stats.rounds_completed, rs.success, rs.failure, rs.skipped
+            )
 
     def _on_failure_screenshot(self, image: np.ndarray, tag: str):
-        """Save a failure screenshot and pass it to the log viewer."""
+        """Save a failure screenshot and optionally archive it."""
+        if not self._settings.get("archive_screenshots", True):
+            return
         import cv2
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         fname = f"{ts}_{tag}.png"
@@ -345,16 +420,91 @@ class MainWindow(QMainWindow):
         cv2.imwrite(str(fpath), image)
         self.log_viewer.add_screenshot(str(fpath), tag)
 
+    def _on_tray_message(self, title: str, message: str, icon_type: int):
+        """Thread-safe tray notification (always runs on the Qt main thread)."""
+        self._tray.showMessage(title, message, QSystemTrayIcon.MessageIcon(icon_type))
+
+    # ═════════════════════════════════════════════════════════════
+    # Settings / chain / failure-rate callbacks
+    # ═════════════════════════════════════════════════════════════
+
+    def _on_settings(self):
+        """Open the settings dialog and apply changes."""
+        dlg = SettingsDialog(self._settings, parent=self)
+        if dlg.exec():
+            self._settings.update(dlg.get_settings())
+            self.log_viewer.append_log("Settings updated")
+
+    def _on_chain_task(self, path: str):
+        """Load a chained task config from *path* and start it."""
+        try:
+            task = self.config_mgr.load(path)
+            self.button_editor.load_from_task(task)
+            self.sequence_editor.load_from_task(task)
+            self.log_viewer.append_log(f"Chain task loaded: {path}")
+            self.scheduler.start(task)
+            self.watchdog.start()
+        except Exception as e:
+            logger.error("Chain task failed: %s", e)
+            self._bridge.log_signal.emit(f"Chain task error: {e}")
+
+    def _on_recognition_result(self, success: bool):
+        """Feed the failure-rate monitor with each recognition outcome."""
+        self.failure_monitor.record(success)
+
+    def _on_failure_rate_alert(self, rate: float, failures: int, total: int):
+        """Called when the failure rate exceeds the configured threshold."""
+        msg = f"High failure rate: {rate:.0%} ({failures}/{total})"
+        logger.warning(msg)
+        self._bridge.log_signal.emit(f"[ALERT] {msg}")
+        self._bridge.tray_message_signal.emit(
+            "AutoClick Vision", msg,
+            int(QSystemTrayIcon.MessageIcon.Warning),
+        )
+        # Notify via webhooks
+        self.webhook_notifier.notify(f"Failure-rate alert: {msg}")
+        # Stop if consecutive-failure limit exceeded
+        stop_limit = self._settings.get("stop_after_consecutive_failures", 0)
+        if stop_limit > 0 and failures >= stop_limit:
+            self._bridge.log_signal.emit("[ALERT] Consecutive failure limit reached — stopping")
+            self.scheduler.stop()
+
+    def _sync_webhooks(self):
+        """Synchronise webhook URLs from settings into the notifier."""
+        # Clear existing hooks and re-register from settings
+        self.webhook_notifier._hooks.clear()
+        for i, w in enumerate(self._settings.get("webhooks", [])):
+            url = w.get("url", "").strip()
+            name = w.get("name", f"hook_{i}")
+            if url:
+                self.webhook_notifier.register(name, url)
+
     # ═════════════════════════════════════════════════════════════
     # Watchdog callbacks (may come from background thread)
     # ═════════════════════════════════════════════════════════════
 
     def _on_watchdog_freeze(self):
-        self._bridge.log_signal.emit("[WATCHDOG] ⚠ Freeze detected — consider restarting")
-        self._tray.showMessage("AutoClick Vision", "Watchdog: freeze detected!", QSystemTrayIcon.MessageIcon.Warning)
+        self._bridge.log_signal.emit("[WATCHDOG] \u26a0 Freeze detected \u2014 attempting auto-restart")
+        self._bridge.tray_message_signal.emit(
+            "AutoClick Vision", "Watchdog: freeze detected \u2014 restarting!",
+            int(QSystemTrayIcon.MessageIcon.Warning),
+        )
+        # Auto-restart: stop + re-start the scheduler with the same task
+        if self.scheduler._task is not None:
+            task = self.scheduler._task
+            self.scheduler.stop()
+            self.watchdog.stop()
+            import time; time.sleep(0.3)
+            self.scheduler.start(task)
+            self.watchdog.start()
+            self._bridge.log_signal.emit("[WATCHDOG] \u21bb Task auto-restarted")
 
     def _on_watchdog_inactivity(self):
-        self._bridge.log_signal.emit("[WATCHDOG] ⚠ Prolonged screen inactivity")
+        self._bridge.log_signal.emit("[WATCHDOG] \u26a0 Prolonged screen inactivity")
+        self._bridge.tray_message_signal.emit(
+            "AutoClick Vision", "Watchdog: prolonged screen inactivity",
+            int(QSystemTrayIcon.MessageIcon.Warning),
+        )
 
     def _on_watchdog_exception(self, exc: Exception):
         self._bridge.log_signal.emit(f"[WATCHDOG] ✖ Exception: {exc}")

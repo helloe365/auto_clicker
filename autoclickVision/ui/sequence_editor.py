@@ -48,17 +48,19 @@ class StepCard(QWidget):
 
     removed = pyqtSignal(object)
     changed = pyqtSignal()
+    selected = pyqtSignal(object)
 
     def __init__(self, step: StepConfig, available_buttons: List[ButtonConfig], parent=None):
         super().__init__(parent)
         self.step = step
         self._buttons = available_buttons
+        self._selected = False
         self._build_ui()
 
     def _build_ui(self):
         layout = QFormLayout(self)
         layout.setContentsMargins(6, 6, 6, 6)
-        self.setStyleSheet("StepCard { border: 1px solid #aaa; border-radius: 4px; background: #f9f9f9; }")
+        self._update_style()
 
         # Button selection (multi-select via comma-separated IDs shown as names)
         self._combo_button = QComboBox()
@@ -115,9 +117,27 @@ class StepCard(QWidget):
         layout.addRow("Timeout:", self._spin_timeout)
 
         # Remove button
-        btn_remove = QPushButton("✕ Remove")
+        btn_remove = QPushButton("Remove")
         btn_remove.clicked.connect(lambda: self.removed.emit(self))
         layout.addRow(btn_remove)
+
+    def _update_style(self):
+        if self._selected:
+            self.setStyleSheet(
+                "StepCard { border: 2px solid #3b82f6; border-radius: 4px; background: #e0edff; }"
+            )
+        else:
+            self.setStyleSheet(
+                "StepCard { border: 1px solid #aaa; border-radius: 4px; background: #f9f9f9; }"
+            )
+
+    def set_selected(self, on: bool):
+        self._selected = on
+        self._update_style()
+
+    def mousePressEvent(self, event):
+        self.selected.emit(self)
+        super().mousePressEvent(event)
 
     def _on_changed(self):
         bid = self._combo_button.currentData()
@@ -146,6 +166,7 @@ class SequenceEditor(QWidget):
         self._config = config_mgr
         self._steps: List[StepConfig] = []
         self._cards: List[StepCard] = []
+        self._selected_idx: int = -1
         self._build_ui()
 
     def _build_ui(self):
@@ -277,18 +298,31 @@ class SequenceEditor(QWidget):
         self._rebuild_cards()
 
     def _on_move_up(self):
-        """Move the last-edited card up (for simplicity, we move the last step)."""
-        if len(self._steps) < 2:
+        """Move the selected step up by one position."""
+        idx = self._selected_idx
+        if idx < 1:
             return
-        # Move the last step up by one
-        self._steps[-1], self._steps[-2] = self._steps[-2], self._steps[-1]
+        self._steps[idx], self._steps[idx - 1] = self._steps[idx - 1], self._steps[idx]
+        self._selected_idx = idx - 1
         self._rebuild_cards()
 
     def _on_move_down(self):
-        if len(self._steps) < 2:
+        """Move the selected step down by one position."""
+        idx = self._selected_idx
+        if idx < 0 or idx >= len(self._steps) - 1:
             return
-        self._steps[0], self._steps[1] = self._steps[1], self._steps[0]
+        self._steps[idx], self._steps[idx + 1] = self._steps[idx + 1], self._steps[idx]
+        self._selected_idx = idx + 1
         self._rebuild_cards()
+
+    def _on_card_selected(self, card: StepCard):
+        """Track which card the user clicked."""
+        for i, c in enumerate(self._cards):
+            if c is card:
+                self._selected_idx = i
+                c.set_selected(True)
+            else:
+                c.set_selected(False)
 
     def _rebuild_cards(self):
         # Clear existing cards
@@ -298,9 +332,12 @@ class SequenceEditor(QWidget):
         self._cards.clear()
 
         buttons = self._available_buttons()
-        for step in self._steps:
+        for i, step in enumerate(self._steps):
             card = StepCard(step, buttons)
             card.removed.connect(self._on_remove_step)
+            card.selected.connect(self._on_card_selected)
+            if i == self._selected_idx:
+                card.set_selected(True)
             self._card_container.addWidget(card)
             self._cards.append(card)
 

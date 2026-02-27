@@ -376,7 +376,9 @@ class ButtonEditor(QWidget):
             b.region = None
 
         # Refresh the list label
-        self._list.currentItem().setText(b.name or b.id)
+        item = self._list.currentItem()
+        if item is not None:
+            item.setText(b.name or b.id)
         self.buttons_changed.emit()
 
     def _on_browse_image(self):
