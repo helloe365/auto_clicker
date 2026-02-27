@@ -1,67 +1,96 @@
 # AutoClick Vision
 
-> Image-recognition-based tool for automatically detecting and clicking on-screen buttons.
+> Image-recognition-based auto-clicker that detects on-screen buttons via OpenCV template matching and clicks them automatically.
+>
+> **Stack:** Python 3 · OpenCV · mss · PyAutoGUI · PyQt6
+
+---
 
 ## Features
 
-- **Screen Capture** — high-performance full-screen and region-based capture via `mss`, multi-monitor support
-- **Template Matching** — single-scale and multi-scale matching with configurable confidence thresholds, grayscale mode, optional SIFT/ORB feature matching
-- **Smart Clicking** — single / double / right-click / long-press with random offset and Bézier-curve mouse movement for human-like behavior; `pydirectinput` mode for fullscreen games
-- **Sequence Scheduling** — define click sequences (`A*3 -> B -> C*2`), conditional steps (wait for appear / disappear), mutual-exclusion recognition, intra/inter-button delays
-- **Loop Control** — configurable round count, interval, scheduled start, and chained multi-task execution
-- **Watchdog** — heartbeat monitoring, screen-inactivity detection, auto-restart on freeze
-- **Configuration** — JSON / YAML configs, import / export, preset templates, optional encryption, auto-save, config versioning with migration
-- **PyQt6 UI** — button editor with drag-and-drop, visual & text sequence editor, real-time log viewer with screenshot thumbnails, system tray, global hotkeys (F9/F10/F11)
-- **Error Handling** — global exception handler, failure-rate alerting, Webhook notifications (Telegram / DingTalk / Slack), screenshot archiving
+| Category | Highlights |
+|----------|------------|
+| **Screen Capture** | High-performance full-screen & region capture via `mss`; multi-monitor support; thread-safe (per-thread `mss` instances) |
+| **Template Matching** | Single-scale & multi-scale matching (`TM_CCOEFF_NORMED`); per-button confidence threshold; grayscale mode; region-restricted search (ROI) |
+| **Smart Clicking** | Single / double / right-click / long-press; random coordinate offset (±N px); Bézier-curve mouse movement; `pydirectinput` mode for fullscreen games |
+| **Sequence Scheduling** | Text syntax (`A*3 -> B -> C*2`) and visual card-based editor; conditional steps (wait-appear / wait-disappear); mutual-exclusion recognition; configurable intra/inter-button delays |
+| **Loop Control** | Configurable round count & interval; scheduled start; chained multi-task execution; duration-based & consecutive-failure stop conditions |
+| **Watchdog** | Heartbeat monitoring; screen-inactivity detection; auto-restart on freeze |
+| **Configuration** | JSON / YAML configs; import / export; preset templates; auto-save; config versioning with migration |
+| **UI** | PyQt6 main window with sliding Visual ↔ Text mode; drag-and-drop button editor; scrollable color-coded step cards; real-time log viewer with screenshot thumbnails; system tray icon; global hotkeys (F9 / F10 / F11); settings dialog |
+| **Error Handling** | Global exception handler; failure-rate alerting; Webhook notifications (Telegram / DingTalk / Slack); screenshot archiving |
+
+---
 
 ## Project Structure
 
 ```
 autoclickVision/
 ├── core/
-│   ├── capture.py          # Screen capture module
-│   ├── matcher.py          # Image recognition module
-│   ├── clicker.py          # Mouse click module
-│   ├── scheduler.py        # Task scheduling module
-│   └── watchdog.py         # Watchdog module
+│   ├── capture.py          # Screen capture (thread-safe mss)
+│   ├── matcher.py          # Template matching engine
+│   ├── clicker.py          # Mouse click automation
+│   ├── scheduler.py        # Sequence scheduler & loop control
+│   └── watchdog.py         # Freeze / inactivity watchdog
 ├── config/
-│   ├── config_manager.py   # Config read/write
+│   ├── config_manager.py   # Config read / write / validation
 │   └── presets/            # Saved preset templates
 ├── ui/
-│   ├── main_window.py      # Main window
-│   ├── button_editor.py    # Button configuration panel
-│   ├── sequence_editor.py  # Sequence editor panel
-│   └── log_viewer.py       # Log viewer panel
-├── notifications.py        # Error handling & webhook notifications
-├── logs/                   # Runtime logs and screenshot archives
-├── assets/                 # UI icon resources
+│   ├── main_window.py      # Main window & toolbar
+│   ├── button_editor.py    # Button config panel & screen capture overlay
+│   ├── sequence_editor.py  # Sliding visual / text sequence editor
+│   ├── log_viewer.py       # Real-time log viewer & round summary
+│   └── settings_dialog.py  # Application settings dialog
+├── notifications.py        # Exception handling & webhook notifier
+├── logs/                   # Runtime logs & screenshot archives
+│   └── screenshots/        # Auto-saved failure screenshots
+├── assets/                 # Icons & captured button images
+│   └── captures/           # Screen-captured button crops
 ├── tests/                  # Unit tests
 ├── requirements.txt
 ├── main.py                 # Entry point
 └── README.md
 ```
 
+---
+
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Create a Virtual Environment (recommended)
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
+```
+
+### 2. Install Dependencies
 
 ```bash
 pip install -r autoclickVision/requirements.txt
 ```
 
-### 2. Run the Application
+### 3. Run the Application
 
 ```bash
 python -m autoclickVision.main
 ```
 
-### 3. Global Hotkeys
+The main window will open with a system tray icon. You can minimize to tray and double-click the icon to restore.
 
-| Key  | Action |
-|------|--------|
-| F9   | Start  |
+---
+
+## Global Hotkeys
+
+| Key  | Action         |
+|------|----------------|
+| F9   | Start          |
 | F10  | Pause / Resume |
-| F11  | Stop   |
+| F11  | Stop           |
+
+---
 
 ## Usage Guide
 
@@ -69,31 +98,58 @@ python -m autoclickVision.main
 
 1. Open the **Buttons** tab in the left panel.
 2. Click **+ Add** or drag-and-drop image files (PNG, JPG, BMP) onto the panel.
-3. Use **✂ Capture from Screen** to crop a button directly from the current screen.
-4. Configure each button: name, confidence threshold, click type, ROI region, retry strategy.
-5. Click **🔍 Test Recognition** to verify matching on the current screen.
+3. Use **✂ Capture from Screen** to draw a rectangle on your screen — the cropped region is saved and added as a new button.
+4. Use **Select ROI…** to restrict where matching looks on the screen.
+5. Configure each button: name, confidence threshold, click type, retry strategy.
+6. Click **🔍 Test Recognition** to verify matching on the live screen.
 
 ### Creating a Sequence
 
 1. Switch to the **Sequence** tab.
-2. Use **Visual Mode** to add steps with the **+ Add Step** button, or switch to **Text Mode** and enter a sequence like `Login*1 -> Confirm*3 -> Close`.
-3. Configure per-step delays, conditions (wait-appear / wait-disappear), and timeouts.
-4. Set loop count, round interval, and optional scheduled start.
+2. **Visual Mode** — click **+ Add Step** to create color-coded step cards; reorder with **↑ Up** / **↓ Down**; scroll when there are many steps.
+3. **Text Mode** — type a sequence like `Login*1 -> Confirm*3 -> Close` and press **Apply** (a success / error prompt is shown).
+4. Switching between modes uses a sliding animation.
+5. Configure per-step: button, repeat count, intra/inter delay, condition (none / wait-appear / wait-disappear), timeout.
+6. Set **Loop Count**, **Round Interval**, and optional **Scheduled Start** in the Loop & Schedule panel.
+
+### Settings
+
+Open **Settings** from the toolbar to configure:
+
+- Grayscale matching mode
+- Multi-scale matching (scale range & step)
+- Bézier-curve mouse movement
+- DirectInput mode
+- Screenshot archiving
+- Failure-rate threshold & window
+- Webhook URLs
+- Stop conditions (consecutive failures / duration limit)
 
 ### Saving / Loading Configs
 
-- Use the toolbar buttons **📂 Open**, **💾 Save**, and **📄 Save As…** to manage task configurations.
-- Configs are stored as JSON or YAML files and can be shared across machines.
-- Preset templates can be saved via the config manager for quick re-use.
+- **📂 Open** / **💾 Save** / **📄 Save As…** on the toolbar manage task configurations.
+- Configs are stored as JSON or YAML and can be shared across machines.
+
+---
 
 ## Building a Standalone Executable
+
+Using the included build script:
+
+```bash
+python build.py
+```
+
+Or manually:
 
 ```bash
 pip install pyinstaller
 pyinstaller --onefile --windowed autoclickVision/main.py --name AutoClickVision
 ```
 
-The resulting `.exe` in `dist/` can be distributed without requiring Python.
+The resulting `dist/AutoClickVision.exe` can be distributed without requiring a Python installation.
+
+---
 
 ## Running Tests
 
@@ -101,21 +157,24 @@ The resulting `.exe` in `dist/` can be distributed without requiring Python.
 python -m pytest autoclickVision/tests/ -v
 ```
 
+---
+
 ## Dependencies
 
 | Package | Purpose |
 |---------|---------|
-| opencv-python | Image matching & processing |
-| mss | Fast screen capture |
-| pyautogui | Mouse / keyboard automation |
-| pydirectinput | Low-level input for games |
-| PyQt6 | GUI framework |
-| numpy | Array operations |
-| pyyaml | YAML config support |
-| keyboard | Global hotkeys |
-| Pillow | Image utilities |
-| requests | Webhook HTTP calls |
-| schedule | Scheduled task triggers |
+| `opencv-python` >= 4.8 | Image matching & processing |
+| `mss` >= 9.0 | Fast screen capture |
+| `pyautogui` >= 0.9.54 | Mouse / keyboard automation |
+| `pydirectinput` >= 1.0.4 | Low-level input for fullscreen games |
+| `PyQt6` >= 6.6 | GUI framework |
+| `numpy` >= 1.24 | Array operations |
+| `pyyaml` >= 6.0 | YAML config support |
+| `keyboard` >= 0.13 | Global hotkeys |
+| `Pillow` >= 10.0 | Image utilities |
+| `requests` >= 2.31 | Webhook HTTP calls |
+
+---
 
 ## License
 

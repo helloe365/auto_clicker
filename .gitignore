@@ -1,0 +1,47 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ─── Virtual environments ────────────────────────────────
+.venv/
+venv/
+ENV/
+
+# ─── Distribution / Build ────────────────────────────────
+build/
+dist/
+*.spec
+*.exe
+*.egg-info/
+
+# ─── IDE / Editor ────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── pytest ──────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ─── Logs & runtime artifacts ────────────────────────────
+autoclickVision/logs/*.log
+autoclickVision/logs/screenshots/
+
+# ─── OS files ────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ─── Config presets (user-generated, optional) ───────────
+# Uncomment if you don't want to track user presets:
+# autoclickVision/config/presets/*.json
+# autoclickVision/config/presets/*.yaml
+
+# ─── Captures (screen-captured button images) ────────────
+autoclickVision/assets/captures/

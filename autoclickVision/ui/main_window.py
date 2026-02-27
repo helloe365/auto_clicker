@@ -198,6 +198,10 @@ class MainWindow(QMainWindow):
         left_tabs = QTabWidget()
         self.button_editor = ButtonEditor(self.config_mgr, self.capture, self.matcher)
         self.sequence_editor = SequenceEditor(self.config_mgr)
+
+        # Keep the shared task's button list in sync whenever buttons change
+        self.button_editor.buttons_changed.connect(self._sync_buttons_to_task)
+
         left_tabs.addTab(self.button_editor, "Buttons")
         left_tabs.addTab(self.sequence_editor, "Sequence")
 
@@ -268,6 +272,13 @@ class MainWindow(QMainWindow):
             keyboard.add_hotkey("F11", self._on_stop)
         except Exception as e:
             logger.warning("Could not register global hotkeys: %s", e)
+
+    def _sync_buttons_to_task(self):
+        """Push the button editor's current list into the shared task config
+        so the sequence editor can see them immediately."""
+        task = self.config_mgr.task
+        if task is not None:
+            task.buttons = self.button_editor.get_button_configs()
 
     # ═════════════════════════════════════════════════════════════
     # Task control slots

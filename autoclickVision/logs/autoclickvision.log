@@ -360,3 +360,16 @@ TypeError: int() argument must be a string, a bytes-like object or a real number
 2026-02-27 22:16:15,364 [INFO] autoclickVision.core.scheduler: [22:16:15] ⏹ Task stopped
 2026-02-27 22:16:15,364 [INFO] autoclickVision.core.scheduler: [22:16:15] Task was stopped
 2026-02-27 22:16:15,364 [INFO] autoclickVision.core.watchdog: Watchdog stopped
+2026-02-27 22:23:44,932 [INFO] autoclickVision.core.scheduler: [22:23:44] ▶ Starting task: Untitled Task
+2026-02-27 22:23:44,933 [INFO] autoclickVision.core.watchdog: Watchdog started (heartbeat timeout=60s, inactivity timeout=120s)
+2026-02-27 22:23:44,933 [INFO] autoclickVision.core.scheduler: [22:23:44] ── Round 1/2 ──
+2026-02-27 22:23:44,933 [INFO] autoclickVision.core.scheduler: [22:23:44] Step 1: [1] ×1
+2026-02-27 22:23:45,667 [INFO] autoclickVision.core.scheduler: [22:23:45]   ✔ 1 found (1.00) at (142,59) — clicked
+2026-02-27 22:23:46,448 [INFO] autoclickVision.core.scheduler: [22:23:46] ── Round 1 done: ✔1 ✖0 ⏭0 ──
+2026-02-27 22:23:46,450 [INFO] autoclickVision.core.scheduler: [22:23:46] Waiting 10.0s before next round…
+2026-02-27 22:23:56,465 [INFO] autoclickVision.core.scheduler: [22:23:56] ── Round 2/2 ──
+2026-02-27 22:23:56,465 [INFO] autoclickVision.core.scheduler: [22:23:56] Step 1: [1] ×1
+2026-02-27 22:23:57,006 [INFO] autoclickVision.core.scheduler: [22:23:57]   ✔ 1 found (0.81) at (142,59) — clicked
+2026-02-27 22:23:57,499 [INFO] autoclickVision.core.scheduler: [22:23:57] ── Round 2 done: ✔1 ✖0 ⏭0 ──
+2026-02-27 22:23:57,500 [INFO] autoclickVision.core.scheduler: [22:23:57] ✔ Task finished
+2026-02-27 22:23:57,503 [INFO] autoclickVision.core.watchdog: Watchdog stopped
