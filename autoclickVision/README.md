@@ -1,3 +1,5 @@
+**English** | [中文](README_zh.md)
+
 # AutoClick Vision
 
 > Image-recognition-based auto-clicker that detects on-screen buttons via OpenCV template matching and clicks them automatically.
