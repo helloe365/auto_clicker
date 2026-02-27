@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\29726\Desktop\auto_clicker\autoclickVision\ui\main_window.py", line 386, in _on_state_change
-    int(QSystemTrayIcon.MessageIcon.Critical),
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: int() argument must be a string, a bytes-like object or a real number, not 'MessageIcon'
