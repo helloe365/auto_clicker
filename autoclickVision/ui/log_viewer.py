@@ -32,6 +32,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ..i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,10 +60,11 @@ class LogViewer(QWidget):
         splitter.addWidget(self._text)
 
         # Middle: round summary table
-        grp_summary = QGroupBox("Round Summary")
+        grp_summary = QGroupBox(tr("Round Summary"))
         sl = QVBoxLayout(grp_summary)
         self._summary_table = QTableWidget(0, 4)
-        self._summary_table.setHorizontalHeaderLabels(["Round", "Success", "Failure", "Skipped"])
+        self._summary_table.setHorizontalHeaderLabels(
+            [tr("Round"), tr("Success"), tr("Failure"), tr("Skipped")])
         self._summary_table.setMaximumHeight(140)
         self._summary_table.horizontalHeader().setStretchLastSection(True)
         sl.addWidget(self._summary_table)
@@ -81,13 +84,13 @@ class LogViewer(QWidget):
 
         # Controls
         btn_row = QHBoxLayout()
-        btn_clear = QPushButton("Clear")
+        btn_clear = QPushButton(tr("Clear"))
         btn_clear.clicked.connect(self.clear_log)
-        btn_export_txt = QPushButton("Export TXT")
+        btn_export_txt = QPushButton(tr("Export TXT"))
         btn_export_txt.clicked.connect(self._on_export_txt)
-        btn_export_csv = QPushButton("Export CSV")
+        btn_export_csv = QPushButton(tr("Export CSV"))
         btn_export_csv.clicked.connect(self._on_export_csv)
-        btn_history = QPushButton("History")
+        btn_history = QPushButton(tr("History"))
         btn_history.clicked.connect(self._on_browse_history)
         btn_row.addWidget(btn_clear)
         btn_row.addWidget(btn_export_txt)
@@ -151,7 +154,7 @@ class LogViewer(QWidget):
         path = item.data(Qt.ItemDataRole.UserRole)
         if path and os.path.isfile(path):
             dlg = QDialog(self)
-            dlg.setWindowTitle("Screenshot")
+            dlg.setWindowTitle(tr("Screenshot"))
             dlg.resize(800, 600)
             lbl = QLabel()
             pm = QPixmap(path).scaled(780, 580, Qt.AspectRatioMode.KeepAspectRatio)
@@ -165,13 +168,13 @@ class LogViewer(QWidget):
     # ═════════════════════════════════════════════════════════════
 
     def _on_export_txt(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Export Log", "", "Text Files (*.txt)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export Log"), "", tr("Text Files (*.txt)"))
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 f.write("\n".join(self._log_lines))
 
     def _on_export_csv(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Export Log", "", "CSV Files (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export Log"), "", tr("CSV Files (*.csv)"))
         if path:
             with open(path, "w", encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)
@@ -188,17 +191,17 @@ class LogViewer(QWidget):
         logs_dir = Path(__file__).resolve().parent.parent / "logs"
         if not logs_dir.exists():
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "History", "No log files found.")
+            QMessageBox.information(self, tr("History"), tr("No log files found."))
             return
 
         log_files = sorted(logs_dir.glob("*.log"), reverse=True)
         if not log_files:
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "History", "No log files found.")
+            QMessageBox.information(self, tr("History"), tr("No log files found."))
             return
 
         dlg = QDialog(self)
-        dlg.setWindowTitle("Historical Runs")
+        dlg.setWindowTitle(tr("Historical Runs"))
         dlg.resize(700, 500)
         layout = QVBoxLayout(dlg)
 
@@ -230,9 +233,9 @@ class LogViewer(QWidget):
         file_list.currentItemChanged.connect(lambda *_: _on_select())
 
         btn_row = QHBoxLayout()
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(tr("Close"))
         btn_close.clicked.connect(dlg.accept)
-        btn_load = QPushButton("Load into viewer")
+        btn_load = QPushButton(tr("Load into viewer"))
         def _load():
             text = preview.toPlainText()
             if text:

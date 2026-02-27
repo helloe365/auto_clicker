@@ -47,6 +47,7 @@ from .button_editor import ButtonEditor
 from .log_viewer import LogViewer
 from .sequence_editor import SequenceEditor
 from .settings_dialog import SettingsDialog
+from ..i18n import tr, get_language, set_language, save_preference
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("AutoClick Vision")
+        self.setWindowTitle(tr("AutoClick Vision"))
         self.setMinimumSize(960, 640)
 
         # ── Core components ──────────────────────────────────────
@@ -153,43 +154,58 @@ class MainWindow(QMainWindow):
     # ═════════════════════════════════════════════════════════════
 
     def _build_toolbar(self):
-        tb = QToolBar("Main Toolbar")
+        tb = QToolBar(tr("Main Toolbar"))
         tb.setMovable(False)
         self.addToolBar(tb)
 
-        self._act_start = QAction("▶ Start", self)
+        self._act_start = QAction(tr("▶ Start"), self)
         self._act_start.triggered.connect(self._on_start)
         tb.addAction(self._act_start)
 
-        self._act_pause = QAction("⏸ Pause", self)
+        self._act_pause = QAction(tr("⏸ Pause"), self)
         self._act_pause.triggered.connect(self._on_pause)
         self._act_pause.setEnabled(False)
         tb.addAction(self._act_pause)
 
-        self._act_stop = QAction("⏹ Stop", self)
+        self._act_stop = QAction(tr("⏹ Stop"), self)
         self._act_stop.triggered.connect(self._on_stop)
         self._act_stop.setEnabled(False)
         tb.addAction(self._act_stop)
 
         tb.addSeparator()
 
-        act_open = QAction("📂 Open", self)
+        act_open = QAction(tr("📂 Open"), self)
         act_open.triggered.connect(self._on_open_config)
         tb.addAction(act_open)
 
-        act_save = QAction("💾 Save", self)
+        act_save = QAction(tr("💾 Save"), self)
         act_save.triggered.connect(self._on_save_config)
         tb.addAction(act_save)
 
-        act_save_as = QAction("📄 Save As…", self)
+        act_save_as = QAction(tr("📄 Save As…"), self)
         act_save_as.triggered.connect(self._on_save_as_config)
         tb.addAction(act_save_as)
 
         tb.addSeparator()
 
-        act_settings = QAction("Settings", self)
+        act_settings = QAction(tr("Settings"), self)
         act_settings.triggered.connect(self._on_settings)
         tb.addAction(act_settings)
+
+        tb.addSeparator()
+
+        # Language switcher
+        from PyQt6.QtWidgets import QComboBox
+        self._combo_lang = QComboBox()
+        self._combo_lang.addItem("English", "en")
+        self._combo_lang.addItem("中文", "zh")
+        cur = get_language()
+        idx = self._combo_lang.findData(cur)
+        if idx >= 0:
+            self._combo_lang.setCurrentIndex(idx)
+        self._combo_lang.currentIndexChanged.connect(self._on_language_changed)
+        tb.addWidget(QLabel("  " + tr("Language") + ": "))
+        tb.addWidget(self._combo_lang)
 
     def _build_central(self):
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -202,8 +218,8 @@ class MainWindow(QMainWindow):
         # Keep the shared task's button list in sync whenever buttons change
         self.button_editor.buttons_changed.connect(self._sync_buttons_to_task)
 
-        left_tabs.addTab(self.button_editor, "Buttons")
-        left_tabs.addTab(self.sequence_editor, "Sequence")
+        left_tabs.addTab(self.button_editor, tr("Buttons"))
+        left_tabs.addTab(self.sequence_editor, tr("Sequence"))
 
         # Right: log viewer
         self.log_viewer = LogViewer()
@@ -219,10 +235,10 @@ class MainWindow(QMainWindow):
         sb = QStatusBar()
         self.setStatusBar(sb)
 
-        self._lbl_state = QLabel("Idle")
-        self._lbl_step = QLabel("Step: –")
-        self._lbl_round = QLabel("Round: –")
-        self._lbl_elapsed = QLabel("Elapsed: 0s")
+        self._lbl_state = QLabel(tr("Idle"))
+        self._lbl_step = QLabel(tr("Step: –"))
+        self._lbl_round = QLabel(tr("Round: –"))
+        self._lbl_elapsed = QLabel(tr("Elapsed: 0s"))
         self._progress = QProgressBar()
         self._progress.setMaximumWidth(200)
         self._progress.setValue(0)
@@ -235,10 +251,10 @@ class MainWindow(QMainWindow):
 
     def _build_tray_icon(self):
         self._tray = QSystemTrayIcon(self)
-        self._tray.setToolTip("AutoClick Vision")
+        self._tray.setToolTip(tr("AutoClick Vision"))
         menu = QMenu()
-        menu.addAction("Show").triggered.connect(self.showNormal)
-        menu.addAction("Quit").triggered.connect(QApplication.quit)
+        menu.addAction(tr("Show")).triggered.connect(self.showNormal)
+        menu.addAction(tr("Quit")).triggered.connect(QApplication.quit)
         self._tray.setContextMenu(menu)
         self._tray.activated.connect(self._on_tray_activated)
         # Load icon via QPixmap (more reliable than QIcon(path) for .ico)
@@ -280,6 +296,18 @@ class MainWindow(QMainWindow):
         if task is not None:
             task.buttons = self.button_editor.get_button_configs()
 
+    def _on_language_changed(self, _idx: int):
+        """Save the new language preference and prompt user to restart."""
+        lang = self._combo_lang.currentData()
+        if lang and lang != get_language():
+            set_language(lang)
+            save_preference(lang)
+            QMessageBox.information(
+                self,
+                tr("Restart Required"),
+                tr("Language changed. Please restart the application for the change to take effect."),
+            )
+
     # ═════════════════════════════════════════════════════════════
     # Task control slots
     # ═════════════════════════════════════════════════════════════
@@ -318,7 +346,7 @@ class MainWindow(QMainWindow):
             return
         task = self._build_task_config()
         if not task.steps:
-            QMessageBox.warning(self, "No Steps", "Please add at least one step to the sequence.")
+            QMessageBox.warning(self, tr("No Steps"), tr("Please add at least one step to the sequence."))
             return
         # Sync webhook registrations
         self._sync_webhooks()
@@ -348,7 +376,7 @@ class MainWindow(QMainWindow):
 
     def _on_open_config(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open Config", "", "Config Files (*.json *.yaml *.yml)"
+            self, tr("Open Config"), "", tr("Config Files (*.json *.yaml *.yml)")
         )
         if path:
             try:
@@ -357,7 +385,7 @@ class MainWindow(QMainWindow):
                 self.sequence_editor.load_from_task(task)
                 self.log_viewer.append_log(f"Config loaded: {path}")
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, tr("Error"), str(e))
 
     def _on_save_config(self):
         try:
@@ -368,11 +396,11 @@ class MainWindow(QMainWindow):
             else:
                 self._on_save_as_config()
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, tr("Error"), str(e))
 
     def _on_save_as_config(self):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Config As", "", "JSON (*.json);;YAML (*.yaml)"
+            self, tr("Save Config As"), "", tr("JSON (*.json);;YAML (*.yaml)")
         )
         if path:
             try:
@@ -380,7 +408,7 @@ class MainWindow(QMainWindow):
                 self.config_mgr.save(path)
                 self.log_viewer.append_log(f"Config saved: {path}")
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, tr("Error"), str(e))
 
     # ═════════════════════════════════════════════════════════════
     # Scheduler callbacks (arrive on Qt thread via signal bridge)
@@ -401,13 +429,13 @@ class MainWindow(QMainWindow):
             self.watchdog.stop()
             if state == TaskState.FINISHED:
                 self._bridge.tray_message_signal.emit(
-                    "AutoClick Vision", "Task finished!",
+                    tr("AutoClick Vision"), tr("Task finished!"),
                     QSystemTrayIcon.MessageIcon.Information.value,
                 )
                 self.webhook_notifier.notify("Task finished")
             elif state == TaskState.ERROR:
                 self._bridge.tray_message_signal.emit(
-                    "AutoClick Vision", "Task error!",
+                    tr("AutoClick Vision"), tr("Task error!"),
                     QSystemTrayIcon.MessageIcon.Critical.value,
                 )
                 self.webhook_notifier.notify("Task error")
@@ -458,7 +486,7 @@ class MainWindow(QMainWindow):
         dlg = SettingsDialog(self._settings, parent=self)
         if dlg.exec():
             self._settings.update(dlg.get_settings())
-            self.log_viewer.append_log("Settings updated")
+            self.log_viewer.append_log(tr("Settings updated"))
 
     def _on_chain_task(self, path: str):
         """Load a chained task config from *path* and start it."""
@@ -548,8 +576,8 @@ class MainWindow(QMainWindow):
         event.ignore()
         self.hide()
         self._tray.showMessage(
-            "AutoClick Vision",
-            "Running in background. Double-click tray icon to restore.",
+            tr("AutoClick Vision"),
+            tr("Running in background. Double-click tray icon to restore."),
             QSystemTrayIcon.MessageIcon.Information,
             2000,
         )

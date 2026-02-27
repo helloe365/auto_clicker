@@ -48,6 +48,7 @@ from ..core.scheduler import (
     TaskConfig,
     parse_sequence_text,
 )
+from ..i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -97,14 +98,14 @@ class StepCard(QWidget):
             )
             self._combo_button.setCurrentIndex(idx)
         self._combo_button.currentIndexChanged.connect(self._on_changed)
-        layout.addRow("Button:", self._combo_button)
+        layout.addRow(tr("Button:"), self._combo_button)
 
         # Repeat
         self._spin_repeat = QSpinBox()
         self._spin_repeat.setRange(1, 9999)
         self._spin_repeat.setValue(self.step.repeat)
         self._spin_repeat.valueChanged.connect(self._on_changed)
-        layout.addRow("Repeat:", self._spin_repeat)
+        layout.addRow(tr("Repeat:"), self._spin_repeat)
 
         # Intra-delay
         self._spin_intra = QDoubleSpinBox()
@@ -112,7 +113,7 @@ class StepCard(QWidget):
         self._spin_intra.setValue(self.step.intra_delay.fixed_value)
         self._spin_intra.setSuffix(" s")
         self._spin_intra.valueChanged.connect(self._on_changed)
-        layout.addRow("Intra Delay:", self._spin_intra)
+        layout.addRow(tr("Intra Delay:"), self._spin_intra)
 
         # Inter-delay
         self._spin_inter = QDoubleSpinBox()
@@ -120,7 +121,7 @@ class StepCard(QWidget):
         self._spin_inter.setValue(self.step.inter_delay.fixed_value)
         self._spin_inter.setSuffix(" s")
         self._spin_inter.valueChanged.connect(self._on_changed)
-        layout.addRow("Inter Delay:", self._spin_inter)
+        layout.addRow(tr("Inter Delay:"), self._spin_inter)
 
         # Condition
         self._combo_cond = QComboBox()
@@ -129,7 +130,7 @@ class StepCard(QWidget):
         idx = self._combo_cond.findData(self.step.condition)
         self._combo_cond.setCurrentIndex(max(idx, 0))
         self._combo_cond.currentIndexChanged.connect(self._on_changed)
-        layout.addRow("Condition:", self._combo_cond)
+        layout.addRow(tr("Condition:"), self._combo_cond)
 
         # Condition timeout
         self._spin_timeout = QDoubleSpinBox()
@@ -137,10 +138,10 @@ class StepCard(QWidget):
         self._spin_timeout.setValue(self.step.condition_timeout)
         self._spin_timeout.setSuffix(" s")
         self._spin_timeout.valueChanged.connect(self._on_changed)
-        layout.addRow("Timeout:", self._spin_timeout)
+        layout.addRow(tr("Timeout:"), self._spin_timeout)
 
         # Remove button
-        btn_remove = QPushButton("Remove")
+        btn_remove = QPushButton(tr("Remove"))
         btn_remove.clicked.connect(lambda: self.removed.emit(self))
         layout.addRow(btn_remove)
 
@@ -266,11 +267,11 @@ class SequenceEditor(QWidget):
 
         # Mode toggle
         mode_row = QHBoxLayout()
-        self._btn_visual = QPushButton("Visual Mode")
+        self._btn_visual = QPushButton(tr("Visual Mode"))
         self._btn_visual.setCheckable(True)
         self._btn_visual.setChecked(True)
         self._btn_visual.clicked.connect(lambda: self._switch_mode(0))
-        self._btn_text = QPushButton("Text Mode")
+        self._btn_text = QPushButton(tr("Text Mode"))
         self._btn_text.setCheckable(True)
         self._btn_text.clicked.connect(lambda: self._switch_mode(1))
         mode_row.addWidget(self._btn_visual)
@@ -295,15 +296,15 @@ class SequenceEditor(QWidget):
         scroll.setWidget(scroll_content)
         vl.addWidget(scroll, 1)  # stretch factor = 1 so scroll takes available space
 
-        btn_add_step = QPushButton("+ Add Step")
+        btn_add_step = QPushButton(tr("+ Add Step"))
         btn_add_step.clicked.connect(self._on_add_step)
         vl.addWidget(btn_add_step)
 
         # Move up/down
         move_row = QHBoxLayout()
-        btn_up = QPushButton("↑ Up")
+        btn_up = QPushButton(tr("↑ Up"))
         btn_up.clicked.connect(self._on_move_up)
-        btn_down = QPushButton("↓ Down")
+        btn_down = QPushButton(tr("↓ Down"))
         btn_down.clicked.connect(self._on_move_down)
         move_row.addWidget(btn_up)
         move_row.addWidget(btn_down)
@@ -313,11 +314,11 @@ class SequenceEditor(QWidget):
         # -- Page 1: Text mode ------
         text_page = QWidget()
         tl = QVBoxLayout(text_page)
-        tl.addWidget(QLabel("Enter sequence (e.g. A*3 -> B -> C*2):"))
+        tl.addWidget(QLabel(tr("Enter sequence (e.g. A*3 -> B -> C*2):")))
         self._text_edit = QPlainTextEdit()
         self._text_edit.setPlaceholderText("A*3 -> B -> C*2")
         tl.addWidget(self._text_edit)
-        btn_apply_text = QPushButton("Apply")
+        btn_apply_text = QPushButton(tr("Apply"))
         btn_apply_text.clicked.connect(self._on_apply_text)
         tl.addWidget(btn_apply_text)
         tl.addStretch()
@@ -326,22 +327,22 @@ class SequenceEditor(QWidget):
         root.addWidget(self._stack)
 
         # ── Loop / schedule settings ────────────────
-        grp = QGroupBox("Loop & Schedule")
+        grp = QGroupBox(tr("Loop & Schedule"))
         gl = QFormLayout()
 
         self._spin_loop = QSpinBox()
         self._spin_loop.setRange(0, 999999)
         self._spin_loop.setValue(50)
         self._spin_loop.setSpecialValueText("∞ (infinite)")
-        gl.addRow("Loop Count:", self._spin_loop)
+        gl.addRow(tr("Loop Count:"), self._spin_loop)
 
         self._spin_interval = QDoubleSpinBox()
         self._spin_interval.setRange(0, 86400)
         self._spin_interval.setValue(10.0)
         self._spin_interval.setSuffix(" s")
-        gl.addRow("Round Interval:", self._spin_interval)
+        gl.addRow(tr("Round Interval:"), self._spin_interval)
 
-        self._chk_scheduled = QCheckBox("Scheduled Start")
+        self._chk_scheduled = QCheckBox(tr("Scheduled Start"))
         self._dt_scheduled = QDateTimeEdit()
         self._dt_scheduled.setEnabled(False)
         self._chk_scheduled.toggled.connect(self._dt_scheduled.setEnabled)
@@ -460,7 +461,7 @@ class SequenceEditor(QWidget):
         if not text:
             self._steps.clear()
             self._rebuild_cards()
-            QMessageBox.information(self, "Success", "Sequence cleared successfully.")
+            QMessageBox.information(self, tr("Success"), tr("Sequence cleared successfully."))
             return
         try:
             task = self._config.task
@@ -475,14 +476,14 @@ class SequenceEditor(QWidget):
             self._steps = parsed
             self._rebuild_cards()
             QMessageBox.information(
-                self, "Success",
-                f"Sequence applied successfully — {len(self._steps)} step(s) loaded.",
+                self, tr("Success"),
+                tr("Sequence applied successfully") + f" \u2014 {len(self._steps)} step(s) loaded.",
             )
         except Exception as exc:
             logger.error("Failed to apply text sequence: %s", exc)
             QMessageBox.critical(
-                self, "Error",
-                f"Failed to apply sequence:\n{exc}",
+                self, tr("Error"),
+                f"{tr('Error')}: {exc}",
             )
 
     # ═════════════════════════════════════════════════════════════

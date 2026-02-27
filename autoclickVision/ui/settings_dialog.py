@@ -30,6 +30,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ..i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +58,7 @@ class SettingsDialog(QDialog):
                 stop_after_duration_minutes     (int)  0 = disabled
         """
         super().__init__(parent)
-        self.setWindowTitle("Settings")
+        self.setWindowTitle(tr("Settings"))
         self.setMinimumWidth(520)
         self._current = current
         self._build_ui()
@@ -74,73 +76,73 @@ class SettingsDialog(QDialog):
         matcher_page = QWidget()
         ml = QFormLayout(matcher_page)
 
-        self._chk_grayscale = QCheckBox("Grayscale matching")
+        self._chk_grayscale = QCheckBox(tr("Grayscale matching"))
         ml.addRow(self._chk_grayscale)
 
-        self._chk_multi_scale = QCheckBox("Multi-scale matching")
+        self._chk_multi_scale = QCheckBox(tr("Multi-scale matching"))
         ml.addRow(self._chk_multi_scale)
 
         self._spin_scale_min = QDoubleSpinBox()
         self._spin_scale_min.setRange(0.1, 2.0)
         self._spin_scale_min.setSingleStep(0.05)
-        ml.addRow("Scale min:", self._spin_scale_min)
+        ml.addRow(tr("Scale min:"), self._spin_scale_min)
 
         self._spin_scale_max = QDoubleSpinBox()
         self._spin_scale_max.setRange(0.1, 3.0)
         self._spin_scale_max.setSingleStep(0.05)
-        ml.addRow("Scale max:", self._spin_scale_max)
+        ml.addRow(tr("Scale max:"), self._spin_scale_max)
 
         self._spin_scale_step = QDoubleSpinBox()
         self._spin_scale_step.setRange(0.01, 0.5)
         self._spin_scale_step.setSingleStep(0.01)
-        ml.addRow("Scale step:", self._spin_scale_step)
+        ml.addRow(tr("Scale step:"), self._spin_scale_step)
 
-        tabs.addTab(matcher_page, "Matcher")
+        tabs.addTab(matcher_page, tr("Matcher"))
 
         # ── Click tab ───────────────────────────────────────────
         click_page = QWidget()
         cl = QFormLayout(click_page)
 
-        self._chk_bezier = QCheckBox("Bézier curve mouse movement")
+        self._chk_bezier = QCheckBox(tr("B\u00e9zier curve mouse movement"))
         cl.addRow(self._chk_bezier)
 
-        self._chk_directinput = QCheckBox("PyDirectInput mode (fullscreen games)")
+        self._chk_directinput = QCheckBox(tr("PyDirectInput mode (fullscreen games)"))
         cl.addRow(self._chk_directinput)
 
-        tabs.addTab(click_page, "Click")
+        tabs.addTab(click_page, tr("Click"))
 
         # ── Notifications tab ───────────────────────────────────
         notify_page = QWidget()
         nl = QVBoxLayout(notify_page)
 
         # Failure rate
-        fr_group = QGroupBox("Failure-Rate Alert")
+        fr_group = QGroupBox(tr("Failure-Rate Alert"))
         frl = QFormLayout()
         self._spin_fr_threshold = QDoubleSpinBox()
         self._spin_fr_threshold.setRange(0.0, 1.0)
         self._spin_fr_threshold.setSingleStep(0.05)
-        frl.addRow("Threshold:", self._spin_fr_threshold)
+        frl.addRow(tr("Threshold:"), self._spin_fr_threshold)
 
         self._spin_fr_window = QSpinBox()
         self._spin_fr_window.setRange(5, 200)
-        frl.addRow("Window size:", self._spin_fr_window)
+        frl.addRow(tr("Window size:"), self._spin_fr_window)
         fr_group.setLayout(frl)
         nl.addWidget(fr_group)
 
         # Webhook table
-        wh_group = QGroupBox("Webhooks (Telegram / DingTalk / Slack)")
+        wh_group = QGroupBox(tr("Webhooks (Telegram / DingTalk / Slack)"))
         whl = QVBoxLayout()
         self._webhook_table = QTableWidget(0, 2)
-        self._webhook_table.setHorizontalHeaderLabels(["Name", "URL"])
+        self._webhook_table.setHorizontalHeaderLabels([tr("Name"), tr("URL")])
         self._webhook_table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch,
         )
         whl.addWidget(self._webhook_table)
 
         btn_row = QHBoxLayout()
-        btn_add = QPushButton("+ Add")
+        btn_add = QPushButton(tr("+ Add"))
         btn_add.clicked.connect(self._on_add_webhook)
-        btn_remove = QPushButton("– Remove")
+        btn_remove = QPushButton(tr("\u2013 Remove"))
         btn_remove.clicked.connect(self._on_remove_webhook)
         btn_row.addWidget(btn_add)
         btn_row.addWidget(btn_remove)
@@ -150,16 +152,16 @@ class SettingsDialog(QDialog):
         nl.addWidget(wh_group)
         nl.addStretch()
 
-        tabs.addTab(notify_page, "Notifications")
+        tabs.addTab(notify_page, tr("Notifications"))
 
         # ── Screenshot tab ──────────────────────────────────────
         ss_page = QWidget()
         sl = QFormLayout(ss_page)
 
-        self._chk_archive = QCheckBox("Archive failure screenshots to logs/screenshots/")
+        self._chk_archive = QCheckBox(tr("Archive failure screenshots to logs/screenshots/"))
         sl.addRow(self._chk_archive)
 
-        tabs.addTab(ss_page, "Screenshots")
+        tabs.addTab(ss_page, tr("Screenshots"))
 
         # ── Stop Conditions tab ─────────────────────────────────
         stop_page = QWidget()
@@ -167,16 +169,16 @@ class SettingsDialog(QDialog):
 
         self._spin_stop_failures = QSpinBox()
         self._spin_stop_failures.setRange(0, 9999)
-        self._spin_stop_failures.setSpecialValueText("Disabled")
-        stl.addRow("Stop after N consecutive failures:", self._spin_stop_failures)
+        self._spin_stop_failures.setSpecialValueText(tr("Disabled"))
+        stl.addRow(tr("Stop after N consecutive failures:"), self._spin_stop_failures)
 
         self._spin_stop_duration = QSpinBox()
         self._spin_stop_duration.setRange(0, 99999)
         self._spin_stop_duration.setSuffix(" min")
-        self._spin_stop_duration.setSpecialValueText("Disabled")
-        stl.addRow("Stop after duration:", self._spin_stop_duration)
+        self._spin_stop_duration.setSpecialValueText(tr("Disabled"))
+        stl.addRow(tr("Stop after duration:"), self._spin_stop_duration)
 
-        tabs.addTab(stop_page, "Stop Conditions")
+        tabs.addTab(stop_page, tr("Stop Conditions"))
 
         root.addWidget(tabs)
 

@@ -43,6 +43,7 @@ from ..config.config_manager import ConfigManager
 from ..core.capture import ScreenCapture
 from ..core.matcher import FailureAction, ImageMatcher, MatchResult
 from ..core.scheduler import ButtonConfig, ClickType, TaskConfig
+from ..i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -148,11 +149,11 @@ class ButtonEditor(QWidget):
         left.addWidget(self._list)
 
         btn_row = QHBoxLayout()
-        self._btn_add = QPushButton("+ Add")
+        self._btn_add = QPushButton(tr("+ Add"))
         self._btn_add.clicked.connect(self._on_add)
-        self._btn_remove = QPushButton("– Remove")
+        self._btn_remove = QPushButton(tr("– Remove"))
         self._btn_remove.clicked.connect(self._on_remove)
-        self._btn_import = QPushButton("📂 Import")
+        self._btn_import = QPushButton(tr("📂 Import"))
         self._btn_import.clicked.connect(self._on_import_images)
         btn_row.addWidget(self._btn_add)
         btn_row.addWidget(self._btn_remove)
@@ -173,73 +174,73 @@ class ButtonEditor(QWidget):
 
         self._edit_name = QLineEdit()
         self._edit_name.textChanged.connect(self._on_field_changed)
-        form.addRow("Name:", self._edit_name)
+        form.addRow(tr("Name:"), self._edit_name)
 
         self._edit_image = QLineEdit()
         self._edit_image.setReadOnly(True)
-        browse_btn = QPushButton("Browse…")
+        browse_btn = QPushButton(tr("Browse…"))
         browse_btn.clicked.connect(self._on_browse_image)
         img_row = QHBoxLayout()
         img_row.addWidget(self._edit_image)
         img_row.addWidget(browse_btn)
-        form.addRow("Image:", img_row)
+        form.addRow(tr("Image:"), img_row)
 
         self._spin_confidence = QDoubleSpinBox()
         self._spin_confidence.setRange(0.0, 1.0)
         self._spin_confidence.setSingleStep(0.05)
         self._spin_confidence.setValue(0.8)
         self._spin_confidence.valueChanged.connect(self._on_field_changed)
-        form.addRow("Confidence:", self._spin_confidence)
+        form.addRow(tr("Confidence:"), self._spin_confidence)
 
         self._combo_click = QComboBox()
         for ct in ClickType:
             self._combo_click.addItem(ct.value, ct)
         self._combo_click.currentIndexChanged.connect(self._on_field_changed)
-        form.addRow("Click Type:", self._combo_click)
+        form.addRow(tr("Click Type:"), self._combo_click)
 
         self._spin_offset = QSpinBox()
         self._spin_offset.setRange(0, 100)
         self._spin_offset.setSuffix(" px")
         self._spin_offset.valueChanged.connect(self._on_field_changed)
-        form.addRow("Offset Range:", self._spin_offset)
+        form.addRow(tr("Offset Range:"), self._spin_offset)
 
         self._spin_retry = QSpinBox()
         self._spin_retry.setRange(0, 50)
         self._spin_retry.setValue(3)
         self._spin_retry.valueChanged.connect(self._on_field_changed)
-        form.addRow("Retry Count:", self._spin_retry)
+        form.addRow(tr("Retry Count:"), self._spin_retry)
 
         self._spin_retry_interval = QDoubleSpinBox()
         self._spin_retry_interval.setRange(0.0, 60.0)
         self._spin_retry_interval.setValue(0.5)
         self._spin_retry_interval.setSuffix(" s")
         self._spin_retry_interval.valueChanged.connect(self._on_field_changed)
-        form.addRow("Retry Interval:", self._spin_retry_interval)
+        form.addRow(tr("Retry Interval:"), self._spin_retry_interval)
 
         self._combo_fallback = QComboBox()
         for fa in FailureAction:
             self._combo_fallback.addItem(fa.value, fa)
         self._combo_fallback.currentIndexChanged.connect(self._on_field_changed)
-        form.addRow("Fallback:", self._combo_fallback)
+        form.addRow(tr("Fallback:"), self._combo_fallback)
 
         # ROI
         self._edit_roi = QLineEdit()
-        self._edit_roi.setPlaceholderText("x, y, w, h (blank = full screen)")
+        self._edit_roi.setPlaceholderText("x, y, w, h")
         self._edit_roi.textChanged.connect(self._on_field_changed)
-        roi_btn = QPushButton("Select ROI…")
+        roi_btn = QPushButton(tr("Select ROI…"))
         roi_btn.clicked.connect(self._on_select_roi)
         roi_row = QHBoxLayout()
         roi_row.addWidget(self._edit_roi)
         roi_row.addWidget(roi_btn)
-        form.addRow("ROI:", roi_row)
+        form.addRow(tr("ROI:"), roi_row)
 
         right.addLayout(form)
 
         # Action buttons
         action_row = QHBoxLayout()
-        self._btn_test = QPushButton("🔍 Test Recognition")
+        self._btn_test = QPushButton(tr("🔍 Test Recognition"))
         self._btn_test.clicked.connect(self._on_test_recognition)
-        self._btn_capture = QPushButton("✂ Capture from Screen")
+        self._btn_capture = QPushButton(tr("✂ Capture from Screen"))
         self._btn_capture.clicked.connect(self._on_capture_from_screen)
         action_row.addWidget(self._btn_test)
         action_row.addWidget(self._btn_capture)
@@ -294,7 +295,7 @@ class ButtonEditor(QWidget):
 
     def _on_import_images(self):
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Import Button Images", "", "Images (*.png *.jpg *.jpeg *.bmp)"
+            self, tr("Import Button Images"), "", tr("Images (*.png *.jpg *.jpeg *.bmp)")
         )
         for p in paths:
             self._add_button_from_image(p)
@@ -383,7 +384,7 @@ class ButtonEditor(QWidget):
 
     def _on_browse_image(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select Button Image", "", "Images (*.png *.jpg *.jpeg *.bmp)"
+            self, tr("Select Button Image"), "", tr("Images (*.png *.jpg *.jpeg *.bmp)")
         )
         if path:
             self._edit_image.setText(path)
@@ -439,11 +440,11 @@ class ButtonEditor(QWidget):
     def _on_test_recognition(self):
         idx = self._current_idx
         if idx < 0 or idx >= len(self._buttons):
-            QMessageBox.warning(self, "No Button", "Select a button first.")
+            QMessageBox.warning(self, tr("No Button"), tr("Select a button first."))
             return
         b = self._buttons[idx]
         if not b.image_path or not os.path.isfile(b.image_path):
-            QMessageBox.warning(self, "No Image", "Button has no valid image path.")
+            QMessageBox.warning(self, tr("No Image"), tr("Button has no valid image path."))
             return
 
         ss = self._capture.capture_full()
@@ -463,11 +464,11 @@ class ButtonEditor(QWidget):
                 (0, 255, 0),
                 2,
             )
-            self._show_image_dialog(annotated, "Match Found")
+            self._show_image_dialog(annotated, tr("Match Found"))
         else:
             QMessageBox.information(
                 self,
-                "Not Found",
+                tr("Not Found"),
                 f"Button not found (best confidence: {result.confidence:.2f})",
             )
 
