@@ -15,7 +15,7 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
-from PyQt6.QtCore import Qt, QMimeData, pyqtSignal
+from PyQt6.QtCore import Qt, QMimeData, QPointF, QRectF, pyqtSignal
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QImage, QPixmap
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -53,58 +53,181 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────────────────────────
 
 class RegionCaptureOverlay(QWidget):
-    """Full-screen translucent overlay that lets the user draw a rectangle."""
+    """Full-screen overlay with zoom (Ctrl+Wheel) and pan (Ctrl+Left-drag).
+
+    * **Normal left-drag** — rubber-band rectangle selection.
+    * **Ctrl + Mouse Wheel** — zoom in / out centred on the cursor.
+    * **Ctrl + Left-drag** — pan the image.
+    * **Esc** — cancel and close.
+
+    The emitted ``region_selected`` coordinates are always in *original*
+    screenshot pixel space, regardless of current zoom / pan state.
+    """
 
     region_selected = pyqtSignal(int, int, int, int)  # x, y, w, h
 
+    _MIN_ZOOM = 0.25
+    _MAX_ZOOM = 10.0
+    _ZOOM_FACTOR = 1.15  # per wheel step
+
     def __init__(self, screenshot: np.ndarray, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setWindowState(Qt.WindowState.WindowFullScreen)
         self.setCursor(Qt.CursorShape.CrossCursor)
+        self.setMouseTracking(True)
 
-        # Convert BGR screenshot to QPixmap for background
+        # Convert BGR screenshot → QPixmap
         h, w, ch = screenshot.shape
-        bytes_per_line = ch * w
         rgb = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
-        qimg = QImage(rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+        qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
         self._bg_pixmap = QPixmap.fromImage(qimg)
 
-        self._origin = None
+        # Viewport transform: image is drawn at  (pos * _zoom + _offset)
+        self._zoom: float = 1.0
+        self._offset = QPointF(0.0, 0.0)  # top-left of image in widget coords
+
+        # Panning state (Ctrl + Left-drag)
+        self._panning: bool = False
+        self._pan_start = QPointF()
+        self._offset_at_pan_start = QPointF()
+
+        # Rubber-band selection state (normal left-drag)
+        self._selecting: bool = False
+        self._sel_origin = QPointF()  # widget coords
         self._rubber = QRubberBand(QRubberBand.Shape.Rectangle, self)
 
+    # ── coordinate helpers ───────────────────────────────────────
+
+    def _widget_to_image(self, wpos: QPointF) -> QPointF:
+        """Map a widget-space point to original-image-space."""
+        return (wpos - self._offset) / self._zoom
+
+    def _image_to_widget(self, ipos: QPointF) -> QPointF:
+        """Map an original-image-space point to widget-space."""
+        return ipos * self._zoom + self._offset
+
+    # ── painting ─────────────────────────────────────────────────
+
     def paintEvent(self, event):
-        from PyQt6.QtGui import QPainter
+        from PyQt6.QtGui import QPainter, QColor, QFont, QPen
+
         painter = QPainter(self)
-        painter.drawPixmap(0, 0, self._bg_pixmap)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        # Draw the screenshot with current zoom + offset
+        target = QRectF(
+            self._offset.x(),
+            self._offset.y(),
+            self._bg_pixmap.width() * self._zoom,
+            self._bg_pixmap.height() * self._zoom,
+        )
+        painter.drawPixmap(target, self._bg_pixmap, QRectF(self._bg_pixmap.rect()))
+
+        # Semi-transparent overlay outside the image area for contrast
+        # (skip for performance when zoom <= 1)
+
+        # HUD: show current zoom level
+        painter.setPen(QPen(QColor(255, 255, 255)))
+        font = QFont("Consolas", 10)
+        painter.setFont(font)
+        painter.setBrush(QColor(0, 0, 0, 160))
+        hud_text = f"  {tr('Zoom')}: {self._zoom:.1f}x  |  Ctrl+{tr('Wheel')}: {tr('zoom')}  |  Ctrl+{tr('Drag')}: {tr('pan')}  |  {tr('Drag')}: {tr('select')}  |  Esc: {tr('cancel')}  "
+        painter.drawRect(4, 4, painter.fontMetrics().horizontalAdvance(hud_text) + 8, 24)
+        painter.drawText(8, 22, hud_text)
+        painter.end()
+
+    # ── zoom (Ctrl + Wheel) ──────────────────────────────────────
+
+    def wheelEvent(self, event):
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            cursor_w = QPointF(event.position())
+            # Point in image space the cursor is over
+            cursor_img = self._widget_to_image(cursor_w)
+
+            # Compute new zoom
+            delta = event.angleDelta().y()
+            if delta > 0:
+                new_zoom = min(self._zoom * self._ZOOM_FACTOR, self._MAX_ZOOM)
+            elif delta < 0:
+                new_zoom = max(self._zoom / self._ZOOM_FACTOR, self._MIN_ZOOM)
+            else:
+                return
+
+            # Adjust offset so the image point under the cursor stays put
+            self._zoom = new_zoom
+            self._offset = cursor_w - cursor_img * self._zoom
+            self.update()
+        else:
+            super().wheelEvent(event)
+
+    # ── pan (Ctrl + Left-drag) ───────────────────────────────────
 
     def mousePressEvent(self, event):
-        self._origin = event.pos()
-        self._rubber.setGeometry(self._origin.x(), self._origin.y(), 0, 0)
-        self._rubber.show()
+        if event.button() == Qt.MouseButton.LeftButton:
+            if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                # Start panning
+                self._panning = True
+                self._pan_start = QPointF(event.position())
+                self._offset_at_pan_start = QPointF(self._offset)
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            else:
+                # Start rubber-band selection
+                self._selecting = True
+                self._sel_origin = QPointF(event.position())
+                p = event.position()
+                self._rubber.setGeometry(int(p.x()), int(p.y()), 0, 0)
+                self._rubber.show()
 
     def mouseMoveEvent(self, event):
-        if self._origin:
-            rect = self._make_rect(self._origin, event.pos())
-            self._rubber.setGeometry(rect)
+        if self._panning:
+            delta = QPointF(event.position()) - self._pan_start
+            self._offset = self._offset_at_pan_start + delta
+            self.update()
+        elif self._selecting:
+            rect = self._make_rect(self._sel_origin, QPointF(event.position()))
+            self._rubber.setGeometry(
+                int(rect.x()), int(rect.y()), int(rect.width()), int(rect.height())
+            )
 
     def mouseReleaseEvent(self, event):
-        if self._origin:
-            rect = self._make_rect(self._origin, event.pos())
-            self._rubber.hide()
-            self._origin = None
-            if rect.width() > 5 and rect.height() > 5:
-                self.region_selected.emit(rect.x(), rect.y(), rect.width(), rect.height())
-            self.close()
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self._panning:
+                self._panning = False
+                self.setCursor(Qt.CursorShape.CrossCursor)
+            elif self._selecting:
+                self._selecting = False
+                rect = self._make_rect(self._sel_origin, QPointF(event.position()))
+                self._rubber.hide()
+
+                if rect.width() > 5 and rect.height() > 5:
+                    # Map widget-space rect corners to image-space
+                    tl_img = self._widget_to_image(rect.topLeft())
+                    br_img = self._widget_to_image(rect.bottomRight())
+
+                    # Clamp to image bounds
+                    iw = self._bg_pixmap.width()
+                    ih = self._bg_pixmap.height()
+                    x1 = max(0, min(int(tl_img.x()), iw - 1))
+                    y1 = max(0, min(int(tl_img.y()), ih - 1))
+                    x2 = max(0, min(int(br_img.x()), iw))
+                    y2 = max(0, min(int(br_img.y()), ih))
+
+                    w = x2 - x1
+                    h = y2 - y1
+                    if w > 0 and h > 0:
+                        self.region_selected.emit(x1, y1, w, h)
+                self.close()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             self.close()
 
     @staticmethod
-    def _make_rect(p1, p2):
-        from PyQt6.QtCore import QRect, QPoint
-        return QRect(
+    def _make_rect(p1: QPointF, p2: QPointF) -> QRectF:
+        return QRectF(
             min(p1.x(), p2.x()), min(p1.y(), p2.y()),
             abs(p2.x() - p1.x()), abs(p2.y() - p1.y()),
         )

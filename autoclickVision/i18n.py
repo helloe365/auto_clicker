@@ -206,6 +206,15 @@ _ZH: Dict[str, str] = {
     "Stop after duration:": "运行时长后停止:",
     "Disabled": "禁用",
 
+    # ── Capture overlay HUD ──────────────────────────────────
+    "Zoom": "缩放",
+    "Wheel": "滚轮",
+    "zoom": "缩放",
+    "Drag": "拖拽",
+    "pan": "平移",
+    "select": "选择",
+    "cancel": "取消",
+
     # ── Language dialog ──────────────────────────────────────
     "Select Language": "选择语言",
     "English": "English",
