@@ -6,6 +6,8 @@
 >
 > **技术栈：** Python 3 · OpenCV · mss · PyAutoGUI · PyQt6
 
+![主窗口总览](image/README/4.png)
+
 ---
 
 ## 功能特性
@@ -105,11 +107,21 @@ python -m autoclickVision.main
 5. 为每个按钮配置：名称、置信度阈值、点击类型、重试策略。
 6. 点击 **🔍 Test Recognition（测试识别）** 在当前屏幕上验证匹配效果。
 
+![按钮编辑器](image/README/1.png)
+
+![测试识别](image/README/5.png)
+
 ### 创建序列
 
 1. 切换到 **Sequence（序列）** 选项卡。
 2. **Visual Mode（可视化模式）** —— 点击 **+ Add Step** 添加彩色步骤卡片；使用 **↑ Up / ↓ Down** 调整顺序；步骤较多时可滚动查看。
+
+![序列编辑器 - 可视化模式](image/README/2.png)
+
 3. **Text Mode（文本模式）** —— 输入序列语法如 `Login*1 -> Confirm*3 -> Close`，点击 **Apply** 应用（会显示成功或错误提示）。
+
+![序列编辑器 - 文本模式](image/README/3.png)
+
 4. 两种模式之间使用滑动动画切换。
 5. 为每个步骤配置：按钮选择、重复次数、按钮内 / 按钮间延迟、条件（无 / 等待出现 / 等待消失）、超时时间。
 6. 在"循环与调度"面板中设置 **Loop Count（循环次数）**、**Round Interval（轮次间隔）** 和可选的 **Scheduled Start（定时启动）**。

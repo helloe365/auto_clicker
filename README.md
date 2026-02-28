@@ -6,21 +6,23 @@
 >
 > **Stack:** Python 3 · OpenCV · mss · PyAutoGUI · PyQt6
 
+![Main Window Overview](image/README/4.png)
+
 ---
 
 ## Features
 
-| Category | Highlights |
-|----------|------------|
-| **Screen Capture** | High-performance full-screen & region capture via `mss`; multi-monitor support; thread-safe (per-thread `mss` instances) |
-| **Template Matching** | Single-scale & multi-scale matching (`TM_CCOEFF_NORMED`); per-button confidence threshold; grayscale mode; region-restricted search (ROI) |
-| **Smart Clicking** | Single / double / right-click / long-press; random coordinate offset (±N px); Bézier-curve mouse movement; `pydirectinput` mode for fullscreen games |
-| **Sequence Scheduling** | Text syntax (`A*3 -> B -> C*2`) and visual card-based editor; conditional steps (wait-appear / wait-disappear); mutual-exclusion recognition; configurable intra/inter-button delays |
-| **Loop Control** | Configurable round count & interval; scheduled start; chained multi-task execution; duration-based & consecutive-failure stop conditions |
-| **Watchdog** | Heartbeat monitoring; screen-inactivity detection; auto-restart on freeze |
-| **Configuration** | JSON / YAML configs; import / export; preset templates; auto-save; config versioning with migration |
-| **UI** | PyQt6 main window with sliding Visual ↔ Text mode; drag-and-drop button editor; scrollable color-coded step cards; real-time log viewer with screenshot thumbnails; system tray icon; global hotkeys (F9 / F10 / F11); settings dialog |
-| **Error Handling** | Global exception handler; failure-rate alerting; Webhook notifications (Telegram / DingTalk / Slack); screenshot archiving |
+| Category                      | Highlights                                                                                                                                                                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Screen Capture**      | High-performance full-screen & region capture via `mss`; multi-monitor support; thread-safe (per-thread `mss` instances)                                                                                                            |
+| **Template Matching**   | Single-scale & multi-scale matching (`TM_CCOEFF_NORMED`); per-button confidence threshold; grayscale mode; region-restricted search (ROI)                                                                                             |
+| **Smart Clicking**      | Single / double / right-click / long-press; random coordinate offset (±N px); Bézier-curve mouse movement;`pydirectinput` mode for fullscreen games                                                                                 |
+| **Sequence Scheduling** | Text syntax (`A*3 -> B -> C*2`) and visual card-based editor; conditional steps (wait-appear / wait-disappear); mutual-exclusion recognition; configurable intra/inter-button delays                                                  |
+| **Loop Control**        | Configurable round count & interval; scheduled start; chained multi-task execution; duration-based & consecutive-failure stop conditions                                                                                                |
+| **Watchdog**            | Heartbeat monitoring; screen-inactivity detection; auto-restart on freeze                                                                                                                                                               |
+| **Configuration**       | JSON / YAML configs; import / export; preset templates; auto-save; config versioning with migration                                                                                                                                     |
+| **UI**                  | PyQt6 main window with sliding Visual ↔ Text mode; drag-and-drop button editor; scrollable color-coded step cards; real-time log viewer with screenshot thumbnails; system tray icon; global hotkeys (F9 / F10 / F11); settings dialog |
+| **Error Handling**      | Global exception handler; failure-rate alerting; Webhook notifications (Telegram / DingTalk / Slack); screenshot archiving                                                                                                              |
 
 ---
 
@@ -86,11 +88,11 @@ The main window will open with a system tray icon. You can minimize to tray and 
 
 ## Global Hotkeys
 
-| Key  | Action         |
-|------|----------------|
-| F9   | Start          |
-| F10  | Pause / Resume |
-| F11  | Stop           |
+| Key | Action         |
+| --- | -------------- |
+| F9  | Start          |
+| F10 | Pause / Resume |
+| F11 | Stop           |
 
 ---
 
@@ -105,11 +107,21 @@ The main window will open with a system tray icon. You can minimize to tray and 
 5. Configure each button: name, confidence threshold, click type, retry strategy.
 6. Click **🔍 Test Recognition** to verify matching on the live screen.
 
+![Button Editor](image/README/1.png)
+
+![Test Recognition](image/README/5.png)
+
 ### Creating a Sequence
 
 1. Switch to the **Sequence** tab.
 2. **Visual Mode** — click **+ Add Step** to create color-coded step cards; reorder with **↑ Up** / **↓ Down**; scroll when there are many steps.
+
+![Sequence Editor - Visual Mode](image/README/2.png)
+
 3. **Text Mode** — type a sequence like `Login*1 -> Confirm*3 -> Close` and press **Apply** (a success / error prompt is shown).
+
+![Sequence Editor - Text Mode](image/README/3.png)
+
 4. Switching between modes uses a sliding animation.
 5. Configure per-step: button, repeat count, intra/inter delay, condition (none / wait-appear / wait-disappear), timeout.
 6. Set **Loop Count**, **Round Interval**, and optional **Scheduled Start** in the Loop & Schedule panel.
@@ -163,18 +175,18 @@ python -m pytest autoclickVision/tests/ -v
 
 ## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `opencv-python` >= 4.8 | Image matching & processing |
-| `mss` >= 9.0 | Fast screen capture |
-| `pyautogui` >= 0.9.54 | Mouse / keyboard automation |
+| Package                    | Purpose                              |
+| -------------------------- | ------------------------------------ |
+| `opencv-python` >= 4.8   | Image matching & processing          |
+| `mss` >= 9.0             | Fast screen capture                  |
+| `pyautogui` >= 0.9.54    | Mouse / keyboard automation          |
 | `pydirectinput` >= 1.0.4 | Low-level input for fullscreen games |
-| `PyQt6` >= 6.6 | GUI framework |
-| `numpy` >= 1.24 | Array operations |
-| `pyyaml` >= 6.0 | YAML config support |
-| `keyboard` >= 0.13 | Global hotkeys |
-| `Pillow` >= 10.0 | Image utilities |
-| `requests` >= 2.31 | Webhook HTTP calls |
+| `PyQt6` >= 6.6           | GUI framework                        |
+| `numpy` >= 1.24          | Array operations                     |
+| `pyyaml` >= 6.0          | YAML config support                  |
+| `keyboard` >= 0.13       | Global hotkeys                       |
+| `Pillow` >= 10.0         | Image utilities                      |
+| `requests` >= 2.31       | Webhook HTTP calls                   |
 
 ---
 
